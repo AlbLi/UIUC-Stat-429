@@ -1,0 +1,335 @@
+---
+title: "HW 07"
+author: "Name: Your Name  , NetID: yournetid"
+date: 'Due: 10/13/2022 11:59pm'
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk
+library(xts)
+library(astsa)
+library(matlib)
+library(tidyverse)
+```
+
+### 1. 
+You have a zero-mean AR(2) process with $n=144$ sample size. You have
+
+$\hat{\gamma}(0)=9$, $\hat{\rho}(1)=0.8$, $\hat{\rho}(2)=0.6$. 
+
+Find the Yule-Walker estimates of $\phi_1$, $\phi_2$, and $\hat{\sigma_W}^2$. 
+
+$$
+\begin{cases} \hat{\rho}(1)=\hat{\phi}_1\hat{\rho}(0)+\hat{\phi}_2\hat{\rho}(1) \\ \hat{\rho}(2)=\hat{\phi}_1\hat{\rho}(1)+\hat{\phi}_2\hat{\rho}(0) \end{cases}
+$$
+$$
+\implies \begin{cases} 0.8=\hat{\phi}_1+0.8\hat{\phi}_2 \\ 0.6=0.8\hat{\phi}_1+\hat{\phi}_2 \end{cases}
+$$
+$$
+\implies \begin{bmatrix} 0.8 \\ 0.6 \end{bmatrix}=\begin{bmatrix} 1 & 0.8 \\ 0.8 & 1 \end{bmatrix}\begin{bmatrix} \hat{\phi}_1 \\ \hat{\phi}_2 \end{bmatrix}
+$$
+$$
+\implies\begin{bmatrix} \hat{\phi}_1 \\ \hat{\phi}_2 \end{bmatrix}=\begin{bmatrix} 1 & 0.8 \\ 0.8 & 1 \end{bmatrix}^{-1}\begin{bmatrix} 0.8 \\ 0.6 \end{bmatrix}
+$$
+$$
+\implies\begin{bmatrix} \hat{\phi}_1 \\ \hat{\phi}_2 \end{bmatrix}=\begin{bmatrix} \frac{25}{9} & -\frac{20}{9} \\ -\frac{20}{9} & \frac{25}{9} \end{bmatrix}\begin{bmatrix} 0.8 \\ 0.6 \end{bmatrix}
+$$
+$$
+\implies\boxed{\begin{bmatrix} \hat{\phi}_1 \\ \hat{\phi}_2 \end{bmatrix}=\begin{bmatrix} \frac{8}{9} \\ -\frac{1}{9} \end{bmatrix}}
+$$
+$$
+\hat{\sigma}^2_w=\hat{\gamma}(0)(1-\hat{\phi}_1\hat{\rho}(1)-\hat{\phi}_2\hat{\rho}(2))
+$$
+$$
+=9(1-\frac{8}{9}(0.8)+\frac{1}{9}(0.6))
+$$
+$$
+\boxed{\hat{\sigma}^2_w=3.2}
+$$
+
+---
+
+\newpage
+
+### Question 2. 
+Read the 'ar1_stat429_fa22.txt' file. This is a simulated AR(1) process. Find Yule-Walker Estimation method (use R) to find $\phi$ and $\sigma_W^2$ of the process.
+
+```{r}
+Q2 <- read.csv("~/Classes/STAT429 (UIUC)/Data/ar1_stat429_fa22.txt", sep="", 
+               stringsAsFactors=TRUE)
+Q2_yw = ar.yw(Q2, order = 1)
+#Phi Parameter Estimate
+phi.yw = Q2_yw$ar
+#Sigma^2 Estimate
+mu = Q2_yw$x.mean
+v = mean((Q2$x - mu)^2)
+s2 = v * (1 - Q2_yw$ar^2)
+```
+
+- $\boxed{\hat{\phi} \approx `r round(phi.yw, 4)`}$
+- $\boxed{\hat{\sigma}^2_w \approx `r round(s2, 4)`}$
+
+---
+
+### Question 3. 
+Read the 'ma1_stat429_fa22.txt' file. This is a simulated MA(1) process.
+
+```{r}
+Q3 <- read.csv("~/Classes/STAT429 (UIUC)/Data/ma1_stat429_fa22.txt", sep="", 
+               stringsAsFactors=TRUE)
+```
+
+(a) Compute Method of Moment estimate of $\hat{\theta}$
+
+```{r}
+p = acf(Q3, plot = FALSE)
+p1 = p$acf[2] #Lag 1
+```
+$$
+\hat{\rho}(1)=\frac{\hat{\theta}}{1+\hat{\theta}^2}\implies(1+\hat{\theta}^2)\hat{\rho}(1)=\hat{\theta}\implies\hat{\rho}(1)+\hat{\rho}(1)\hat{\theta}^2=\hat{\theta}\implies\hat{\rho}(1)\hat{\theta}^2-\hat{\theta}+\hat{\rho}(1)=0
+$$
+$$
+\hat{\theta}=\frac{1\pm\sqrt{1-4(\hat{\rho}(1))^2}}{2\hat{\rho}(1)}
+$$
+```{r}
+#Calculating theta hat
+theta.mom = (1 + c(-1,1) * sqrt(1 - 4 * p1^2)) / (2 * p1)
+```
+We have two solutions for $\hat{\theta}$, so we will pick the one that makes the MA(1) process invertible. Therefore our Method of Moments estimate of $\hat{\theta}$ will be $\boxed{\hat{\theta} \approx `r round(theta.mom[1], 4)`}$ as for that value of $\hat{\theta}$, the root of the characteristic polynomial will be outside the unit circle.
+
+\newpage
+
+(b) Use the Gauss-Newton Algorithm to find the Conditional LS estimate, $\hat{\theta}$ and $\hat{\sigma_W}^2$. For the initial step, use answer from part (a).
+(You may use R and example 3.32 of [TSA4], but you need to explain your steps.)
+
+This chunk of code uses the formula from example 3.32. We first start by initializing our $W_t(\theta)$ and $Z_t(\theta)$. Using our initial value we then iterate it using the formulas and then updating our $\hat{\theta}$. After updating our $\hat{\theta}$, we then check to see if the $|\hat{\theta}_{j+1}-\hat{\theta}_j|$<tolerance. Here I chose the value of 0.0001 for the tolerance. After that, we then use the conditional sum of squares for that value of $\hat{\theta}$ to calculate our $\hat{\sigma}^2_w$.
+```{r}
+#Number of Observations in Data
+n = nrow(Q3)
+#Initializing W(theta), Z(theta), and Theta Vectors
+w = z = theta = rep(0,n)
+#Starting Value of Theta using MoM Estimate
+theta[1] = (1 - sqrt(1 - 4 * p1^2)) / (2 * p1)
+#Setting Up Counter for Value of Theta in Formula
+t = 1
+
+repeat{
+  for(i in 2:n){
+    #Calculation of all W
+    w[i] = Q3[i,1] - theta[t]*w[i-1]
+    #Calculation of all Z
+    z[i] = w[i-1] - theta[t]*z[i-1]
+  }
+  #Calculating the conditional error.
+  Sc = sum(w^2)
+  #Calculating numerator of update
+  Szw = sum(z*w)
+  #Calculating denominator of update
+  Sz = sum(z^2)
+  #Calculating new theta
+  theta[t+1] = theta[t] + Szw / Sz
+  #Test to see if we may stop iterating. 
+  #We stop if the absolute difference between the current and previous theta is
+  #less than 0.0001.
+  if(t > 1){
+    if(abs(theta[t] - theta[t-1]) < 0.0001){
+      break
+    } else {
+      #Updating t for next iteration.
+      t = t + 1
+    }
+  } else {
+    #Updating t for next iteration.
+    t = t + 1
+  }
+}
+theta = data.frame(theta)
+theta = theta %>% filter(theta != 0)
+#theta.hat using Gauss-Newton Algorithm
+theta.hat = theta[t,1]
+#sigma^2.hat using Gauss-Newton Algorithm
+sigma2.hat = Sc / (nrow(Q3) - 1)
+```
+
+- $\boxed{\hat{\theta} \approx `r round(theta.hat, 4)`}$
+- $\boxed{\hat{\sigma}^2_w \approx `r round(sigma2.hat, 4)`}$
+
+(c) Find the Unconditional LS estimate (MLE) of $\hat{\theta}$ and $\hat{\sigma_W}^2$. Use R. 
+
+```{r}
+uncond = sarima(Q3$x, p = 0, d = 0, q = 1, details = FALSE)
+#Finding the Unconditional LS Estimate of theta.hat
+theta.ls = uncond$fit$coef[1]
+#Finding the Unconditional LE Estimate of sigma^2.hat
+sigma2.ls = uncond$fit$sigma2
+```
+
+- $\boxed{\hat{\theta} \approx `r round(as.numeric(theta.ls), 4)`}$
+- $\boxed{\hat{\sigma}^2_w \approx `r round(sigma2.ls, 4)`}$
+
+---
+
+### Question 4. 
+Read the 'arma11_stat429_fa22.txt' file. This is a simulated ARMA(1,1) process.
+
+```{r}
+Q4 <- read.csv("~/Classes/STAT429 (UIUC)/Data/arma11_stat429_fa22.txt", sep="",
+               stringsAsFactors=TRUE)
+```
+
+
+(a) Compute Method of Moment estimates of $\hat{\theta}$ and $\hat{\phi}$.
+
+From the autocovariance function of ARMA(1,1) we know...
+$$
+\gamma_X(h)=\phi\gamma_X(h)\implies\gamma_X(h)-\phi\gamma_X(h)=0\implies\gamma_X(h)=C\phi^h;h=1,2,\ldots
+$$
+To solve for c...
+$$
+\text{Let h = 1 }\implies\gamma_X(1)=C\phi\implies C=\frac{\gamma_X(1)}{\phi}
+$$
+Using equation 3.48 from TSA4...
+$$
+\gamma_X(0)=\phi\gamma_X(1)+\sigma^2_w(1+\theta\phi+\theta^2)\text{ and }\gamma_X(1)=\phi\gamma_X(0)+\sigma^2_w\theta
+$$
+By plugging $\gamma_X(1) into \gamma_X(0)$ we get...
+$$
+\gamma_X(0)=\phi(\phi\gamma_X(0)+\sigma^2_w\theta)+\sigma^2_w(1+\theta\phi+\theta^2)=\phi^2\gamma_X(0)+\sigma^2_w\theta\phi+\sigma^2_w(1+\theta\phi+\theta^2)
+$$
+$$
+\implies \gamma_X(0)=\sigma^2_w(\frac{1+2\theta\phi+\theta^2}{1-\phi^2})
+$$
+By plugging $\gamma_X(0) into \gamma_X(1)$ we get...
+$$
+\gamma_X(1)=\phi(\phi\gamma_X(1)+\sigma^2_w(1+\theta\phi+\theta^2))+\sigma^2_w\theta
+$$
+$$
+\gamma_X(1)=\phi^2\gamma_X(1)+\sigma^2_w(\phi+\theta\phi^2+\theta^2\phi+\theta)
+$$
+$$
+\implies\gamma_X(1)=\sigma^2_w(\frac{(1+\theta\phi)(\phi+\theta)}{1-\phi^2})
+$$
+$$
+\gamma_X(h)=\frac{\gamma_X(1)}{\phi}\phi^h=\sigma^2_w(\frac{(1+\theta\phi)(\phi+\theta)}{1-\phi^2})\phi^{h-1};h\ge1
+$$
+$$
+\rho_X(h)=\frac{\gamma_X(h)}{\gamma_X(0)}=(\frac{(1+\theta\phi)(\phi+\theta)}{1+2\theta\phi+\theta^2})\phi^{h-1};h\ge1
+$$
+For $\hat{\theta}$...
+$$
+\hat{\rho}_X(2)=\phi\hat{\rho}_X(1)\implies\hat{\phi}=\frac{\hat{\rho}_X(2)}{\hat{\rho}_X(1)}
+$$
+For $\hat{\theta}$ we can use the value we found for $\hat{\theta}$ and the quadratic formula...
+$$
+\hat{\rho}_X(1)=\frac{(1+\theta\phi)(\phi+\theta)}{1+2\theta\phi+\theta^2}\implies(1+2\theta\phi+\theta^2)\hat{\rho}_X(1)=(1+\theta\phi)(\phi+\theta)
+$$
+$$
+\implies\hat{\rho}_X(1)+2\phi\hat{\rho}_X(1)\theta+\hat{\rho}_X(1)\theta^2=\phi+\theta+\phi^2\theta+\phi\theta^2
+$$
+$$
+\implies(\phi-\hat{\rho}_X(1))\theta^2+(\phi^2+1-2\hat{\rho}_X(1))\theta+\phi-\hat{\rho}_X(1)=0
+$$
+By using the quadratic formula...
+$$
+\hat{\theta}=\frac{-(\hat{\phi}^2+1-2\hat{\phi}\hat{\rho}_X(1))\pm\sqrt{(\hat{\phi}^2+1-2\hat{\phi}\hat{\rho}_X(1))^2-4(\hat{\phi}-\hat{\rho}_X(1))(\hat{\phi}-\hat{\rho}_X(1))}}{2(\hat{\phi}-\hat{\rho}_X(1))}
+$$
+
+```{r}
+r = acf(Q4$x, plot = FALSE)
+r1 = r$acf[2] #Lag 1
+r2 = r$acf[3] #Lag 2
+#MoM Est for phi.hat
+phi.hat = r2/r1
+#MoM Est for theta.hat
+a = phi.hat - r1
+b = phi.hat^2 - 2*phi.hat*r1 + 1
+c = phi.hat-r1
+theta.hat = (-b + c(-1,1)*sqrt(b^2 - 4*a*c))/(2*a)
+```
+As we can see, there will be two values given to us from solving the equation above, so we will choose the value of $\hat{\theta}$ that will make the ARMA(1,1) model invertible (the root of the characteristic polynomial will be outside the unit circle).
+
+- $\boxed{\hat{\phi}\approx `r round(phi.hat, 4)`}$
+- $\boxed{\hat{\theta}\approx `r round(theta.hat[2], 4)`}$
+
+(b) Find the Unconditional LS estimate (MLE) of $\hat{\theta}$ and $\hat{\sigma_W}^2$. Use R. 
+
+```{r}
+MLE = sarima(Q4$x, p = 1, d = 0, q = 1, details = FALSE)
+#Finding the Unconditional LS Estimate of theta.hat
+coef = MLE$fit$coef
+#Finding the Unconditional LS Estimate of sigam^2.hat
+s = MLE$fit$sigma2
+```
+
+- $\boxed{\hat{\phi} \approx `r round(as.numeric(coef[1]), 4)`}$
+- $\boxed{\hat{\theta} \approx `r round(as.numeric(coef[2]), 4)`}$
+- $\boxed{\hat{\sigma}^2_w \approx `r round(s, 4)`}$
+
+(c) [Grad-only] Use the Gauss-Newton Algorithm to find the Conditional LS estimate, $\hat{\theta}$, $\hat{\phi}$ and $\hat{\sigma_W}^2$. For the initial step, use answer from (a).
+(You may use R and example 3.32 of [TSA4] (and also check the hints), but you need to explain your steps.)
+
+This chunk of code uses the formula from example 3.32 and the hints on Canvas. We first start by initializing our $\mathbf{W}$ and $\mathbf{Z}$. Using our initial values we then iterate using the formulas from the hints on Canvas and then updating our $\hat{\phi}$ and $\hat{\theta}$. After updating, we then check to see if the $|\hat{\phi}_{j+1} - \hat{\phi}_j|$ and $|\hat{\theta}_{j+1} - \hat{\theta}_j|$ < tolerance. Here I chose the value of 0.0001 for the tolerance. After that, we then use the conditional sum of squares for the values of $\hat{\phi}$ and $\hat{\theta}$ to calculate our $\hat{\sigma}^2_w$.
+```{r}
+#Number of Observations in Data
+N = nrow(Q4)
+#Initialization of W(theta), Theta, and Phi Vectors
+W = Theta = Phi = rep(0,N)
+#Initialization of Z(phi, theta) matrix
+Z = matrix(data = rep(0,2*N), nrow = 2, ncol = N, byrow = TRUE)
+#Starting Value of Phi and Theta using MoM Estimates
+Theta[1] = theta.hat[2]
+Phi[1] = phi.hat
+#Setting Up Counter for Value of Phi and Theta in Formula
+B = 1
+
+repeat{
+  for(i in 2:N){
+    #Calculation for all W
+    W[i] = Q4[i,1] - Phi[B]*Q4[i-1,1] - Theta[B]*W[i-1]
+    #Calculation of all Z
+    Z[1,i] = Q4[i-1,1] - Theta[B]*Z[1,i-1]
+    Z[2,i] = W[i-1] - Theta[B]*Z[2,i-1]
+  }
+  #Calculating the conditional error.
+  SC = sum(W^2)
+  #Calculating numerator of update
+  SZW = Z %*% W
+  #Calculating denominator of update
+  SZ = Z %*% t(Z)
+  #Calculating Update Vector
+  new = inv(SZ) %*% SZW
+  #Calculating new Phi and Theta
+  Phi[B+1] = Phi[B] + new[1,1]
+  Theta[B+1] = Theta[B] + new[2,1]
+  #Test to see if we may stop iterating.
+  #We stop if the absolute difference between the current and previous theta and
+  #phi is less than 0.0001.
+  if(B > 1){
+    if(abs(Phi[B] - Phi[B-1]) & abs(Theta[B] - Theta[B-1]) < 0.0001){
+      break
+    } else {
+      #Updating B for next iteration.
+      B = B + 1
+    }
+  } else {
+    #Updating B for next iteration.
+    B = B + 1
+  }
+}
+Phi = data.frame(Phi)
+Phi = Phi %>% filter(Phi != 0)
+Theta = data.frame(Theta)
+Theta = Theta %>% filter(Theta != 0)
+#Phi.hat using Gauss-Newton Algorithm
+Phi.hat = Phi[B,1]
+#Theta.hat using Gauss-Newton Algorithm
+Theta.hat = Theta[B,1]
+#Sigma^2.hat using Gauss-Newton Algorithm
+Sigma2.hat = SC / (nrow(Q4) - 1)
+```
+
+- $\boxed{\hat{\phi} \approx `r round(Phi.hat, 4)`}$
+- $\boxed{\hat{\theta} \approx `r round(Theta.hat, 4)`}$
+- $\boxed{\hat{\sigma}^2_w \approx `r round(Sigma2.hat, 4)`}$

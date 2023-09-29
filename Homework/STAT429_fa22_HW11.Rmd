@@ -1,0 +1,329 @@
+---
+title: "HW 11"
+author: "Name: Paul Holaway  , NetID: paulch2"
+date: 'Due: 11/10/2022 11:59pm'
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(astsa)
+library(latex2exp)
+```
+### Question 1.
+
+Find A and B so that 
+$$3 \cos (2\pi \omega t+0.4) = A\cos (2\pi \omega t)+ B\sin (2\pi \omega t).$$
+
+$$
+3\cos(2\pi\omega t+0.4)=3\cos(2\pi\omega t)\cos(0.4)-3\sin(2\pi\omega t)\sin(0.4)
+$$
+$$
+=3\cos(0.4)\cos(2\pi\omega t)-2\sin(0.4)\sin(2\pi\omega t)
+$$
+$$
+\implies\boxed{A=3\cos(0.4)\text{, }B=-3\sin(0.4)}
+$$
+
+### Question 2. 
+
+Find R and $\Phi$ so that 
+$$ R \cos (2\pi \omega t+\Phi)= \cos (2\pi \omega t)+ 3\sin (2\pi \omega t).$$
+$$
+=R\cos(2\pi\omega t)cos(\Phi)-R\sin(2\pi\omega t)\sin(\Phi)
+$$
+$$
+R\cos(\Phi)=1\text{ and }-R\sin(\Phi)=3
+$$
+$$
+\implies R=\frac{1}{\cos(\Phi)}\implies-\frac{\sin(\Phi)}{\cos(\Phi)}=3\implies-\tan(\Phi)=3\implies\Phi=\tan^{-1}(-3)\implies R=\sec(\tan^{-1}(-3))
+$$
+$$
+\boxed{\Phi=\tan^{-1}(-3)\text{, }R=\sec(\tan^{-1}(-3))}
+$$
+
+\newpage
+
+### Question 3. 
+
+Let $$X_t=2 \cos \left(2\pi t \frac{4}{96} \right)+2 \sin \left(2\pi  \left(t\frac{14}{96}+0.3\right) \right).$$
+
+(a) Make a time series plot of the time series, for $t=1, \dots, 96$.
+
+```{r}
+X1 = 2*cos(2*pi*1:96*(4/96)) + 2*sin(2*pi*(1:96*(14/96)+0.3))
+tsplot(X1, main="")
+```
+
+\newpage
+
+(b) Conduct the regression of $X_t$ on $\cos (2\pi \omega t)$ and $\sin(2\pi \omega t)$ for $\omega=\frac{4}{96}$. Use R. Verify that they are perfect estimates (no error/noise term).
+
+```{r}
+#w = 4/96
+Z1 = cos(2*pi*(4/96)*1:96)
+Z2 = sin(2*pi*(4/96)*1:96)
+#Regression
+m1 = lm(X1 ~ Z1 + Z2)
+#Model
+summary(m1)
+```
+Yes, we have perfect estimates. We notice that the $R^2$ is exactly 0.5, our `Z1` coefficient is 2, and our `Z2` coefficient is 0. This means that we are perfectly explaining the first part of $X_t$ when $\omega=\frac{4}{96}$.
+
+\newpage
+
+(c) Conduct the regression of $X_t$ on $\cos (2\pi \omega t)$ and $\sin(2\pi \omega t)$ for $\omega=\frac{14}{96}$. Use R. Verify that they are perfect estimates (no error/noise term).
+
+```{r}
+#w = 14/96
+Z3 = cos(2*pi*(14/96)*1:96)
+Z4 = sin(2*pi*(14/96)*1:96)
+#Regression
+m2 = lm(X1 ~ Z3 + Z4)
+#Model
+summary(m2)
+```
+Yes, we have perfect estimates. We notice that the $R^2$ is exactly 0.5, our `Z3` coefficient is 1.902, and our `Z4` coefficient is -0.618. This means that we are perfectly explaining the second part of $X_t$ when $\omega=\frac{14}{96}$.
+
+\newpage
+
+(d) Conduct the regression of $X_t$ on $\cos (2\pi \omega t)$ and $\sin(2\pi \omega t)$ for $\omega=\frac{4}{96}$ and $\omega=\frac{14}{96}$ together. Use R. Verify that they are perfect estimates (no error/noise term).
+
+```{r}
+#w = 4/96 and 14/96 together
+#Regression
+m3 = lm(X1 ~ Z1 + Z2 + Z3 + Z4)
+#Model
+summary(m3)
+```
+Yes, we have perfect estimates. We notice that the $R^2$ is exactly 1, which means that we are perfectly explaining both parts of $X_t$.
+
+\newpage
+
+(e) Conduct the regression of $X_t$ on $\cos (2\pi \omega t)$ and $\sin(2\pi \omega t)$ for $\omega=\frac{3}{96}$ and $\omega=\frac{13}{96}$ together. Use R. Are those estimates still perfect?
+
+```{r}
+#w = 3/96 and 13/96 together
+Z5 = cos(2*pi*(3/96)*1:96)
+Z6 = sin(2*pi*(3/96)*1:96)
+Z7 = cos(2*pi*(13/96)*1:96)
+Z8 = sin(2*pi*(13/96)*1:96)
+#Regression
+m4 = lm(X1 ~ Z5 + Z6 + Z7 + Z8)
+#Model
+summary(m4)
+```
+No, the estimates are no longer perfect. We can see that the $R^2$ is practically 0 and all of the coefficient estimates are also practically 0. Note also how none of them are insignificant.
+
+\newpage
+
+### Question 4. 
+
+Generate any series of length n = 10. Show that the series may be fit exactly by a linear combination of enough cosine-sine curves at the Fourier frequencies, $\omega=1/10, \dots, 5/10$. You may use R and conduct regression for this problem. 
+
+```{r}
+#Creating Sequence
+myseq = rep(0,10)
+
+for(i in 1:10){
+  myseq[i] = 2^i
+}
+
+#Creating Frequency Terms
+F1 = cos(2*pi*(1/10)*1:10)
+F2 = sin(2*pi*(1/10)*1:10)
+F3 = cos(2*pi*(2/10)*1:10)
+F4 = sin(2*pi*(2/10)*1:10)
+F5 = cos(2*pi*(3/10)*1:10)
+F6 = sin(2*pi*(3/10)*1:10)
+F7 = cos(2*pi*(4/10)*1:10)
+F8 = sin(2*pi*(4/10)*1:10)
+F9 = cos(2*pi*(5/10)*1:10)
+F10 = sin(2*pi*(5/10)*1:10)
+
+#Creating models
+M1 = lm(myseq ~ F1 + F2)
+M2 = lm(myseq ~ F1 + F2 + F3 + F4)
+M3 = lm(myseq ~ F1 + F2 + F3 + F4 + F5 + F6)
+M4 = lm(myseq ~ F1 + F2 + F3 + F4 + F5 + F6 + F7 + F8)
+M5 = lm(myseq ~ F1 + F2 + F3 + F4 + F5 + F6 + F7 + F8 + F9 + F10)
+
+#Plotting
+plot(1:10, myseq, col = "white", xlab = "", ylab = "Series", ylim = c(-100,1000))
+grid()
+box()
+lines(1:10, myseq)
+lines(1:10, M1$fitted.values, col = "red")
+lines(1:10, M2$fitted.values, col = "yellow")
+lines(1:10, M3$fitted.values, col = "green")
+lines(1:10, M4$fitted.values, col = "blue")
+lines(1:10, M5$fitted.values, col = "violet")
+legend("topleft", legend = c("Series",TeX(r"($\omega$=1/10)"),TeX(r"($\omega$=1/10:2/10)"),
+       TeX(r"($\omega$=1/10:3/10)"), TeX(r"($\omega$=1/10:4/10)"),TeX(r"($\omega$=1/10:5/10)")),
+       col = c("black","red","yellow","green","blue","violet"), lty = 1)
+```
+As we can see, once we use all five of the Fourier frequencies ($\omega=1/10, \ldots, 5/10$), the series of $2^x$ will be fit exactly by a linear combination of the cos-sin curves.
+
+\newpage
+
+### Question 5. [GR-only]
+
+For simplicity, let's assume that $n$ is an even integer.
+
+Hint: Use $\cos (b)=\frac{e^{ib}+e^{-ib}}{2}$, $\sin (b)=\frac{e^{ib}-e^{-ib}}{2i}$, $e^{ib}=\cos(b)+ i\sin (b)$.
+
+Verify that for any positive integer $n$ and $j,k=0,1,\dots n/2$:
+
+(a) Except for $j=0$ or $j=n/2$, 
+
+$$\sum_{t=1}^{n}\cos^2 (2\pi t \frac{j}{n})= \sum_{t=1}^{n}\sin^2 (2\pi t \frac{j}{n})=\frac{n}{2}.$$
+$$
+\sum_{t=1}^{n}\cos^2 (2\pi t \frac{j}{n})=\sum_{t=1}^n(\frac{e^{2\pi t\frac{j}{n}i}+e^{-2\pi t\frac{j}{n}i}}{2})^2=\sum_{t=1}^n(\frac{e^{4\pi t\frac{j}{n}i}+e^{-4\pi t\frac{j}{n}i}+2}{4})
+$$
+$$
+=\sum_{t=1}^{n}[\frac{1}{2}+\frac{\cos(4\pi t\frac{j}{n})}{4}+\frac{i\sin(4\pi t\frac{j}{n})}{4}+\frac{\cos(-4\pi t\frac{j}{n})}{4}+\frac{i\sin(-4\pi t\frac{j}{n})}{4}]
+$$
+$$
+=\sum_{t=1}^{n}[\frac{1}{2}+\frac{\cos(4\pi t\frac{j}{n})}{4}+\frac{i\sin(4\pi t\frac{j}{n})}{4}+\frac{\cos(4\pi t\frac{j}{n})}{4}-\frac{i\sin(4\pi t\frac{j}{n})}{4}]
+$$
+$$
+=\frac{n}{2}+\frac{1}{2}\sum_{t=1}^{n}\cos(4\pi t\frac{j}{n})
+$$
+$$
+\sum_{t=1}^{n}\cos(4\pi t\frac{j}{n})=0\text{ as }n\text{ is even.}
+$$
+$$
+\implies \sum_{t=1}^{n}\cos^2 (2\pi t \frac{j}{n})=\frac{n}{2}
+$$
+$$
+\sum_{t=1}^{n}\sin^2 (2\pi t \frac{j}{n})=\sum_{t=1}^n(\frac{e^{2\pi t\frac{j}{n}i}-e^{-2\pi t\frac{j}{n}i}}{2i})^2=\sum_{t=1}^n(\frac{e^{4\pi t\frac{j}{n}i}+e^{-4\pi t\frac{j}{n}i}-2}{-4})
+$$
+$$
+=\sum_{t=1}^{n}[\frac{1}{2}-\frac{\cos(4\pi t\frac{j}{n})}{4}-\frac{i\sin(4\pi t\frac{j}{n})}{4}-\frac{\cos(-4\pi t\frac{j}{n})}{4}-\frac{i\sin(-4\pi t\frac{j}{n})}{4}]
+$$
+$$
+=\sum_{t=1}^{n}[\frac{1}{2}-\frac{\cos(4\pi t\frac{j}{n})}{4}-\frac{i\sin(4\pi t\frac{j}{n})}{4}-\frac{\cos(4\pi t\frac{j}{n})}{4}+\frac{i\sin(4\pi t\frac{j}{n})}{4}]
+$$
+$$
+=\frac{n}{2}-\frac{1}{2}\sum_{t=1}^{n}\cos(4\pi t\frac{j}{n})
+$$
+$$
+\sum_{t=1}^{n}\cos(4\pi t\frac{j}{n})=0\text{ as }n\text{ is even.}
+$$
+$$
+\implies \sum_{t=1}^{n}\sin^2 (2\pi t \frac{j}{n})=\frac{n}{2}
+$$
+
+(b) When $j=0$ or $j=n/2$, 
+
+$$\sum_{t=1}^{n}\cos^2 (2\pi t \frac{j}{n})=n, \quad \sum_{t=1}^{n}\sin^2 (2\pi t \frac{j}{n})=0.$$
+
+* $j=0$
+
+$$
+\sum_{t=1}^{n}\cos^2 (2\pi t \frac{j}{n})=\sum_{t=1}^{n}\cos^2 (0)=\sum_{t=1}^{n}1=n
+$$
+$$
+\sum_{t=1}^{n}\sin^2 (2\pi t \frac{j}{n})=\sum_{t=1}^{n}\sin^2 (0)=\sum_{t=1}^{n}0=0
+$$
+
+* $j=\frac{n}{2}$
+
+$$
+\sum_{t=1}^{n}\cos^2 (2\pi t \frac{j}{n})=\sum_{t=1}^{n}\cos^2 (\pi t)=\sum_{t=1}^{n}1=n
+$$
+$$
+\sum_{t=1}^{n}\sin^2 (2\pi t \frac{j}{n})=\sum_{t=1}^{n}\sin^2 (\pi t)=\sum_{t=1}^{n}0=0
+$$
+
+(c) When $j\neq k$, 
+
+$$\sum_{t=1}^{n}\cos (2\pi t \frac{j}{n}) \cos (2\pi t \frac{k}{n}) =\sum_{t=1}^{n}\sin (2\pi t \frac{j}{n}) \sin (2\pi t \frac{k}{n})  =0 .$$
+$$
+\sum_{t=1}^{n}\cos (2\pi t \frac{j}{n}) \cos (2\pi t \frac{k}{n}) =\sum_{t=1}^{n}(\frac{e^{2\pi t\frac{j}{n}i}+e^{-2\pi t\frac{j}{n}i}}{2})(\frac{e^{2\pi t\frac{k}{n}i}+e^{-2\pi t\frac{k}{n}i}}{2})
+$$
+$$
+=\frac{1}{4}\sum_{t=1}^{n}e^{\frac{2\pi t}{n}(j+k)i}+e^{\frac{2\pi t}{n}(k-j)i}+e^{\frac{2\pi t}{n}(j-k)i}+e^{\frac{2\pi t}{n}(-j-k)i}
+$$
+$$
+=\frac{1}{4}\sum_{t=1}^{n}[\cos(\frac{2\pi t}{n}(j+k))+i\sin(\frac{2\pi t}{n}(j+k))+\cos(\frac{2\pi t}{n}(k-j))+i\sin(\frac{2\pi t}{n}(k-j))
+$$
+$$
++\cos(\frac{2\pi t}{n}(j-k))+i\sin(\frac{2\pi t}{n}(j-k))+\cos(\frac{2\pi t}{n}(-j-k))+i\sin(\frac{2\pi t}{n}(-j-k))]
+$$
+$$
+=\frac{1}{4}\sum_{t=1}^{n}[\cos(\frac{2\pi t}{n}(j+k))+i\sin(\frac{2\pi t}{n}(j+k))+\cos(\frac{2\pi t}{n}(j-k))-i\sin(\frac{2\pi t}{n}(j-k))
+$$
+$$
++\cos(\frac{2\pi t}{n}(j-k))+i\sin(\frac{2\pi t}{n}(j-k))+\cos(\frac{2\pi t}{n}(j+k))-i\sin(\frac{2\pi t}{n}(j+k))]
+$$
+$$
+=\frac{1}{2}\sum_{t=1}^{n}\cos(\frac{2\pi t}{n}(j+k))+\cos(\frac{2\pi t}{n}(j-k))
+$$
+$$
+\sum_{t=1}^{n}\cos(\frac{2\pi t}{n}(j+k))+\cos(\frac{2\pi t}{n}(j-k))=0\text{ as }n\text{ is even.}
+$$
+$$
+\sum_{t=1}^{n}\cos (2\pi t \frac{j}{n}) \cos (2\pi t \frac{k}{n}) =0
+$$
+$$
+\sum_{t=1}^{n}\sin (2\pi t \frac{j}{n}) \sin (2\pi t \frac{k}{n})=\sum_{t=1}^{n}(\frac{e^{2\pi t\frac{j}{n}i}-e^{-2\pi t\frac{j}{n}i}}{2i})(\frac{e^{2\pi t\frac{k}{n}i}-e^{-2\pi t\frac{k}{n}i}}{2i})
+$$
+$$
+=-\frac{1}{4}\sum_{t=1}^{n}e^{\frac{2\pi t}{n}(j+k)i}-e^{\frac{2\pi t}{n}(k-j)i}-e^{\frac{2\pi t}{n}(j-k)i}+e^{\frac{2\pi t}{n}(-j-k)i}
+$$
+$$
+=-\frac{1}{4}\sum_{t=1}^{n}[\cos(\frac{2\pi t}{n}(j+k))+i\sin(\frac{2\pi t}{n}(j+k))-\cos(\frac{2\pi t}{n}(k-j))-i\sin(\frac{2\pi t}{n}(k-j))
+$$
+$$
+-\cos(\frac{2\pi t}{n}(j-k))-i\sin(\frac{2\pi t}{n}(j-k))+\cos(\frac{2\pi t}{n}(-j-k))+i\sin(\frac{2\pi t}{n}(-j-k))]
+$$
+$$
+=-\frac{1}{4}\sum_{t=1}^{n}[\cos(\frac{2\pi t}{n}(j+k))+i\sin(\frac{2\pi t}{n}(j+k))-\cos(\frac{2\pi t}{n}(j-k))+i\sin(\frac{2\pi t}{n}(j-k))
+$$
+$$
+-\cos(\frac{2\pi t}{n}(j-k))-i\sin(\frac{2\pi t}{n}(j-k))+\cos(\frac{2\pi t}{n}(j+k))-i\sin(\frac{2\pi t}{n}(j+k))]
+$$
+$$
+=\frac{1}{2}\sum_{t=1}^{n}\cos(\frac{2\pi t}{n}(j-k))-\cos(\frac{2\pi t}{n}(j+k))
+$$
+$$
+\sum_{t=1}^{n}\cos(\frac{2\pi t}{n}(j-k))-\cos(\frac{2\pi t}{n}(j+k))=0\text{ as }n\text{ is even.}
+$$
+$$
+\sum_{t=1}^{n}\sin (2\pi t \frac{j}{n}) \sin (2\pi t \frac{k}{n}) =0
+$$
+
+(d) For any $j$ and $k$,
+
+$$
+\sum_{t=1}^{n}\cos (2\pi t \frac{j}{n}) \sin (2\pi t \frac{k}{n})=0 .
+$$
+$$
+\sum_{t=1}^{n}\cos (2\pi t \frac{j}{n}) \sin (2\pi t \frac{k}{n})=\sum_{t=1}^{n}(\frac{e^{2\pi t\frac{j}{n}i}+e^{-2\pi t\frac{j}{n}i}}{2})(\frac{e^{2\pi t\frac{k}{n}i}-e^{-2\pi t\frac{k}{n}i}}{2i})
+$$
+$$
+=\frac{1}{4i}\sum_{t=1}^{n}e^{\frac{2\pi t}{n}(j+k)i}+e^{\frac{2\pi t}{n}(k-j)i}-e^{\frac{2\pi t}{n}(j-k)i}-e^{\frac{2\pi t}{n}(-j-k)i}
+$$
+$$
+=\frac{1}{4i}\sum_{t=1}^{n}[\cos(\frac{2\pi t}{n}(j+k))+i\sin(\frac{2\pi t}{n}(j+k))+\cos(\frac{2\pi t}{n}(k-j))+i\sin(\frac{2\pi t}{n}(k-j))
+$$
+$$
+-\cos(\frac{2\pi t}{n}(j-k))-i\sin(\frac{2\pi t}{n}(j-k))-\cos(\frac{2\pi t}{n}(-j-k))-i\sin(\frac{2\pi t}{n}(-j-k))]
+$$
+$$
+=\frac{1}{4i}\sum_{t=1}^{n}[\cos(\frac{2\pi t}{n}(j+k))+i\sin(\frac{2\pi t}{n}(j+k))+\cos(\frac{2\pi t}{n}(j-k))-i\sin(\frac{2\pi t}{n}(j-k))
+$$
+$$
+-\cos(\frac{2\pi t}{n}(j-k))-i\sin(\frac{2\pi t}{n}(j-k))-\cos(\frac{2\pi t}{n}(j+k))+i\sin(\frac{2\pi t}{n}(j+k))]
+$$
+$$
+=\frac{1}{2}\sum_{t=1}^{n}\sin(\frac{2\pi t}{n}(j+k))-\sin(\frac{2\pi t}{n}(j-k))
+$$
+$$
+\sum_{t=1}^{n}\sin(\frac{2\pi t}{n}(j+k))-\sin(\frac{2\pi t}{n}(j-k))=0\text{ as }n\text{ is even.}
+$$
+$$
+\sum_{t=1}^{n}\cos (2\pi t \frac{j}{n}) \sin (2\pi t \frac{k}{n})=0 .
+$$

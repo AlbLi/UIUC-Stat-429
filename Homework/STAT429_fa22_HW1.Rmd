@@ -1,0 +1,97 @@
+---
+title: "HW 01"
+author: "Name: Paul Holaway  ,     NetID: paulch2  "
+date: 'Due: 9/1/22, 11:59pm'
+output: pdf_document
+urlcolor: blue
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+#you may want to install the package before running this
+library(astsa)
+```
+
+
+
+
+## Question 1. 
+There are a number of seismic recordings from earthquakes and from mining  explosions in ```astsa``` package. All of the data are in the dataframe ```eqexp```, but two specific  recordings are in ```EQ5``` and ```EXP6```, the fifth earthquake and the sixth explosion, respectively. The data represent two phases or arrivals along the surface, denoted by P  (t = 1,..., 1024) and S (t = 1025,..., 2048), at a seismic recording station. The  recording instruments are in Scandinavia and monitor a Russian nuclear testing site.  The general problem of interest is in distinguishing between these waveforms in order  to maintain a comprehensive nuclear test ban treaty.  To compare the earthquake and explosion signals, 
+
+### (a) Plot the two series separately in a multifigure plot with two rows and one column.  [2pt]
+
+```{r, echo=TRUE,fig.height=3}
+# put echo=TRUE to print your Rcode
+par(mfrow=c(2,1))
+tsplot(EQ5, ylab = "5th Earthquake", main = "Comparing 5th Earthquake with 6th Explosion",
+       col = "#003d7c")
+tsplot(EXP6, ylab = "6th Explosion", col = "#f38025")
+```
+
+
+### (b) Plot the two series on the same graph using different colors or different line types. [2pt]
+
+```{r, echo=TRUE,fig.height=3}
+col = c("#003d7c","#f38025")
+tsplot(EQ5, col = col[1], lwd = 1, pch = 19, ylab = "")
+lines(EXP6, col = col[2], lwd = 1, pch = 19)
+legend("topleft", col = col, lty = 1, lwd = 2, pch = 19, legend = c("5th Earthquake", 
+      "6th Explosion"), bg = "white")
+```
+
+### (c) In what way are the earthquake and explosion series different? [2pt]
+
+The explosion series shows stronger seismic activity after the arrival of the P wave and S wave. Also, after the wave arrives and the initial seismic activity occurs, there is relatively low seismic activity from the explosion. The earthquake series shows a more consistent level of seismic activity during both the P wave and the S wave. The S wave in the earthquake series also shows much greater seismic activity after the initial hit of the S wave than the explosion series.
+
+\newpage
+
+## 2. [4pt]
+Generate and plot nine series that are random walks of length n = 500 without drift ($\delta=0.1$) and $\sigma_W=1$. Plot all series in one graph. Make sure all series are visible, you may want to change y axis range of your plot.
+Adjust the `R` chunk option such that the plot is at the center and occupies 75% of the  page width.
+
+```{r, echo=TRUE,fig.align="center",out.width="75%"}
+set.seed(143572)
+colors = c("#ceb888","#f38025","#003d7c","#1a453b","#431f81","#a91d36","#ffd51d",
+           "#b2b1ac","#840017")
+w = rep(0,500)
+
+for(i in 1:9){
+  w = rnorm(500, mean = 0, sd = 1)
+  x = cumsum(w)
+  wd = w + 0.1
+  xd = cumsum(wd)
+  
+  if(i == 1){
+    tsplot(xd, ylim = c(-20,90), main = "Plot of 9 Random Walks", ylab = "", col = colors[i])
+  } else {
+    lines(xd, col = colors[i])
+  }
+}
+
+abline(a = 0, b = 0.1, lty = 2)
+```
+
+\newpage
+
+## 3. [5pt]
+Find a time series data that interests you. Here are some resources that you can use. (You don't have to use these.)
+
+* ESRL (Earth system research Lab)
+  * https://www.esrl.noaa.gov/gmd/dv/data/
+* US health data 
+  * https://www.cdc.gov/nchs/index.htm
+* Commodities data 
+  * https://www.indexmundi.com/commodities/
+* NASA 
+  * https://data.giss.nasa.gov
+
+After choosing the data, save the data and read the data into `R`. Print out the first 5 observations. 
+
+```{r, echo=TRUE}
+library(readr)
+GTM <- read_csv("C:/Users/Paul Holaway/Documents/Classes/STAT429 (UIUC)/Data/GLB.Ts+dSST.csv")
+head(GTM, 5)
+```
+
+Retrieved from [NASA's GISS Surface Temperature Analysis](https://data.giss.nasa.gov/gistemp/).

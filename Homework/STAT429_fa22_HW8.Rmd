@@ -1,0 +1,156 @@
+---
+title: "HW 08"
+author: "Name: Paul Holaway  , NetID: paulch2"
+date: 'Due: 10/20/2022 11:59pm'
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk
+library(xts)
+library(astsa)
+library(tidyverse)
+library(latex2exp)
+```
+
+### Question 1. 
+Plot the theoretical ACF of the seasonal ARMA $(0,1)\times (1,0)_{12}$ model with $\Phi=0.8$ and $\theta=0.5$.
+
+$$
+\rho(12k)=\Phi^k\implies\rho(12k)=0.8^k
+$$
+$$
+\rho(12k-1)=\rho(12k+1)=\frac{\theta}{1+\theta^2}\Phi^k=\frac{0.5}{1+0.5^2}0.8^k=0.4(0.8^k)
+$$
+```{r}
+#Creating data frame to save lags and ACF values
+data1 = data.frame(matrix(data = rep(0,202), nrow = 101, ncol = 2))
+data1 = data1 %>% rename(Lag = "X1") %>% rename(ACF = "X2")
+data1$Lag = 0:100
+#Computing the ACF values
+for(i in 1:101){
+  if(data1[i,1] %% 12 == 0){
+    #p(12k)
+    data1[i,2] = round(0.8^(data1[i,1]/12), 4)
+  } else if(data1[i,1] %% 12 == 1){
+    #p(12k+1)
+    data1[i,2] = round(0.4*0.8^((data1[i,1]-1)/12), 4)
+  } else if(data1[i,1] %% 12 == 11){
+    #p(12k-1)
+    data1[i,2] = round(0.4*0.8^((data1[i,1]+1)/12), 4)
+  }
+}
+data1$Lag = round(data1$Lag / 12, 2)
+#Plotting Theoretical ACF
+plot(data1$Lag, data1$ACF, xlab = "Lag", ylab = expression(rho(h)), type = "h",
+     main = TeX(r"($ARMA(0,1)\times(1,0)_{12}$)"))
+```
+
+---
+
+### Question 2.
+Suggest a seasonal ARIMA model of your choice to unemployment data, ```UnempRate``` of ```astsa``` library.
+
+```{r}
+par(mfrow = c(4,3))
+#UnempRate
+UnempRate = UnempRate
+tsplot(UnempRate)
+acf(UnempRate)
+pacf(UnempRate)
+#differenced UnempRate
+tsplot(diff(UnempRate), ylab = TeX(r"(\nabla UnempRate)"))
+acf(diff(UnempRate))
+pacf(diff(UnempRate))
+#differenced and seasonal differenced UnempRate
+tsplot(diff(diff(UnempRate),12), ylab = TeX(r"(\nabla $\nabla_{12}$ UnempRate)"))
+acf(diff(diff(UnempRate), 12))
+pacf(diff(diff(UnempRate), 12))
+#2nd difference and seasonal difference UnempRate
+tsplot(diff(diff(diff(UnempRate),12)), ylab = TeX(r"(\nabla $\nabla_{12}^2$ UnempRate)"))
+acf(diff(diff(diff(UnempRate),12)))
+pacf(diff(diff(diff(UnempRate),12),12))
+```
+I would suggest a $\text{SARIMA}(0,1,1)\times(0,2,1)_{12}$ model for the `UnempRate` data. We can see from the original data that there is both a seasonal and non-seasonal trend. Therefore we will do both a seasonal and non-seasonal difference for the data. However, we can still see that there is a still a slight seasonal trend, so we will take one more seasonal difference. After doing this, we can see that the ACF cuts off after lag 1 and the PACF tails off for the non-seasonal part and ACF cuts off after lag 1 and the PACF tails off for the seasonal part too. That is why I would use the model I suggested above.
+
+---
+
+### Question 3. 
+Suggest a seasonal ARIMA model of your choice to the U.S. Live Birth Series,  ```birth``` of ```astsa``` library.
+
+```{r}
+par(mfrow = c(3,3))
+#birth
+birth = birth
+tsplot(birth)
+acf(birth)
+pacf(birth)
+#seasonal difference of birth
+tsplot(diff(birth, 12))
+acf(diff(birth, 12))
+pacf(diff(birth, 12))
+#seasonal difference and non-seasonal difference of birth
+tsplot(diff(diff(birth),12))
+acf(diff(diff(birth),12))
+pacf(diff(diff(birth),12))
+```
+I would suggest a $\text{SARIMA}(0,1,1)\times(0,1,1)_{12}$ model for the `birth` data. We can see from the original data that there is both a seasonal and non-seasonal trend. Therefore we will do both a seasonal and non-seasonal difference for the data. After doing this, we can see that the ACF cuts off after lag 1 and the PACF tails off for the non-seasonal part and ACF cuts off after lag 1 and the PACF tails off for the seasonal part too. That is why I would use the model I suggested above.
+
+---
+
+### Question 4. 
+An ARMA model has AR characteristic polynomial 
+
+$$(1-1.6z +0.7 z^2)(1-0.8 z^{12})$$
+
+(a) Is the model stationary? State your reasons.
+
+```{r}
+#Inputting the polynomial coefficients
+m4 = c(1,-1.6,0.7,0,0,0,0,0,0,0,0,0,-0.8,1.28,-0.56)
+#Computing the roots
+polyroot(m4)
+#Finding the modulus of the roots
+Mod(polyroot(m4))
+#Checking that all roots are outside of the unit circle.
+min(Mod(polyroot(m4)))
+```
+The process is stationary as the modulus of all roots of the AR characteristic polynomial are outside of the unit circle.
+
+(b) Identify the model as a certain seasonal ARIMA model.
+
+- $\boxed{\text{SARIMA}(2,0,0)\times(1,0,0)_{12}}$ OR
+- $\boxed{\text{SARMA}(2,0)\times(1,0)_{12}}$
+
+---
+
+### Question 5. 
+
+Identify the following as certain multiplicative seasonal ARIMA models:
+
+(a) $$X_t=0.5 X_{t-1}+X_{t-4}-0.5X_{t-5}+ W_t - 0.3W_{t-1}$$
+
+$$
+X_t-0.5X_{t-1}-X_{t-4}+0.5X_{t-5}=W_t-0.3X_{t-1}
+$$
+$$
+(1-0.5B-B^4+0.5B^5)X_t=(1-0.3B)W_t
+$$
+$$
+(1-0.5B)(1-B^4)X_t=(1-0.3B)W_t
+$$
+$\boxed{\text{SARIMA}(1,0,1)\times(0,1,0)_4}$
+
+(b) $$X_t= X_{t-1}+X_{t-12}-X_{t-13}+W_t - 0.5 W_{t-1}-0.5W_{t-12}+0.25 W_{t-13}$$
+
+$$
+X_t-X_{t-1}-X_{t-12}+X_{t-13}=W_t-0.5W_{t-1}-0.5W_{t-12}+0.25W_{t-13}
+$$
+$$
+(1-B-B^{12}+B^{13})X_t=(1-0.5B-0.5B^{12}+0.25B^{13})W_t
+$$
+$$
+(1-B)(1-B^{12})X_t=(1-0.5B)(1-0.5B^{12})W_t
+$$
+$\boxed{\text{SARIMA}(0,1,1)\times(0,1,1)_{12}}$

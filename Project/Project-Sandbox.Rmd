@@ -1,0 +1,620 @@
+---
+title: "Project Sandbox"
+author: "Paul Holaway, Albert Li, Julia Nagel"
+output: 
+  html_document:
+    theme: readable
+    toc: TRUE
+    toc_float: TRUE
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+
+```{r, warning=FALSE, include=FALSE}
+suppressMessages(library(astsa))
+suppressMessages(library(fGarch))
+suppressMessages(library(fpp2))
+suppressMessages(library(latex2exp))
+suppressMessages(library(tidyverse))
+suppressMessages(library(TSA))
+suppressMessages(library(tseries))
+suppressMessages(library(xts))
+```
+
+```{r, eval=FALSE}
+library(astsa)
+library(fGarch)
+library(fpp2)
+library(latex2exp)
+library(tidyverse)
+library(TSA)
+library(tseries)
+library(xts)
+```
+
+## Custom Functions
+
+```{r}
+#Custom Function for Creating Training and Testing Data
+ts.train.test <- function(data, freq, p = 0.75){
+total.length = length(data)
+#Splitting up the Data
+test.length = round(total.length * (1 - p), 0)
+train.length = total.length - test.length
+data.test = data[train.length:total.length]
+data.train = data[1:(train.length - 1)]
+#Coercing the data into time series format
+data.test = ts(data.test, start = time(data)[train.length], frequency = freq)
+data.train = ts(data.train, start = time(data)[1], frequency = freq)
+#Returning a list of the training and testing data
+x = list(data.train, data.test)
+names(x) <- c("train","test")
+return(x)
+}
+#Custom Function for Calculating RMSE
+tsRMSE <- function(data, freq, prob = 0.75, p = 0, d = 0, q = 0, P = 0, D = 0, Q = 0, S = 1){
+  #Creating the training and testing splits
+  train = ts.train.test(data, freq, p = prob)$train
+  test = ts.train.test(data, freq, p = prob)$test
+  #Forecast modeling
+  model = sarima.for(train, p, d, q, P, D, Q, S, no.constant = TRUE, 
+                     n.ahead = length(test), plot = FALSE)
+  #RMSE Calculations
+  RMSE = sqrt(mean((model$pred - as.numeric(test))^2))
+  RMSE1.5 = sqrt(mean((model$pred[1:5] - as.numeric(test[1:5]))^2))
+  #Returning a list of the RMSE values
+  x = list(RMSE, RMSE1.5)
+  names(x) <- c("RMSE", "RMSE Obs. 1:5")
+  return(x)
+}
+#Custom Function for Calculating RMSE for GARCH
+garchRMSE <- function(data, freq, prob = 0.75, p = 0, q = 0, alpha = 0, beta = 0){
+  #Creating the training and testing splits
+  train = ts.train.test(data, freq, p = prob)$train
+  test = ts.train.test(data, freq, p = prob)$test
+  #Forecast modeling
+  model = garchFit(substitute(~arma(p,q) + garch(alpha, beta)), train)
+  pred = predict(model, n.ahead = length(test))
+  #RMSE Calculations
+  RMSE = sqrt(mean((as.numeric(pred$meanForecast) - as.numeric(test))^2))
+  RMSE1.5 = sqrt(mean((as.numeric(pred$meanForecast[1:5]) - as.numeric(test[1:5]))^2))
+  #Returning a list of the RMSE values
+  x = list(RMSE, RMSE1.5)
+  names(x) <- c("RMSE", "RMSE Obs. 1:5")
+  return(x)
+}
+```
+
+## Data Import
+
+```{r}
+#Paul PC
+#Beijing <- read.csv("~/Classes/STAT429 (UIUC)/Project/Data Sets/BeijingPM20100101_20151231.csv",
+#                    stringsAsFactors=TRUE)
+#Paul MacOS
+Beijing <- read.csv("~/Desktop/Courses/STAT429 (UIUC)/Project/Data Sets/BeijingPM20100101_20151231.csv", stringsAsFactors=TRUE)
+```
+
+## Data Cleaning
+
+### Subsetting
+
+```{r}
+#Going by each recording station
+Dongsi = Beijing %>% drop_na(PM_Dongsi)
+Dongsihuan = Beijing %>% drop_na(PM_Dongsihuan)
+Nongzhanguan = Beijing %>% drop_na(PM_Nongzhanguan)
+USPost = Beijing %>% drop_na(PM_US.Post)
+```
+
+### `NA` Checking
+
+```{r}
+#Looking for Columns with NA
+result = data.frame(matrix(data = rep(0,5*ncol(Beijing)), nrow = ncol(Beijing)))
+for(i in 1:ncol(Beijing)){
+  result[i,1] = any(is.na(Beijing[,i]))
+  result[i,2] = any(is.na(Dongsi[,i]))
+  result[i,3] = any(is.na(Dongsihuan[,i]))
+  result[i,4] = any(is.na(Nongzhanguan[,i]))
+  result[i,5] = any(is.na(USPost[,i]))
+}
+#Outputting Results
+#Each row is a column in the data while the columns represent the data sets.
+result = result %>% rename(Beijing = "X1") %>% rename(Dongsi = "X2") %>%
+         rename(Dongsihuan = "X3") %>% rename(Nongzhanguan = "X4") %>%
+         rename(USPost = "X5") %>%
+         mutate(Beijing = ifelse(Beijing == 0, "No", "Yes")) %>%
+         mutate(Dongsi = ifelse(Dongsi == 0, "No", "Yes")) %>%
+         mutate(Dongsihuan = ifelse(Dongsihuan == 0, "No", "Yes")) %>%
+         mutate(Nongzhanguan = ifelse(Nongzhanguan == 0, "No", "Yes")) %>%
+         mutate(USPost = ifelse(USPost == 0, "No", "Yes"))
+rownames(result) = colnames(Beijing)
+result
+```
+
+### Creating A Single Date-Time Column
+
+```{r}
+#Dongsi
+Dongsi$Date = as.Date(with(Dongsi,paste(day,month,year,sep = "-")), "%d-%m-%Y")
+Dongsi$Recorded = as.POSIXct(paste(Dongsi$Date, Dongsi$hour), format = "%Y-%m-%d %H")
+Dongsi = Dongsi %>% 
+  select(Date, Recorded, season, PM_Dongsi, DEWP, HUMI, PRES, TEMP, cbwd, Iws, precipitation,
+         Iprec)
+#Dongsihuan
+Dongsihuan$Date = as.Date(with(Dongsihuan,paste(day,month,year,sep = "-")), "%d-%m-%Y")
+Dongsihuan$Recorded = as.POSIXct(paste(Dongsihuan$Date, Dongsihuan$hour), format = "%Y-%m-%d %H")
+Dongsihuan = Dongsihuan %>% 
+  select(Date, Recorded, season, PM_Dongsihuan, DEWP, HUMI, PRES, TEMP, cbwd, Iws, precipitation,
+         Iprec)
+#Nongzhanguan
+Nongzhanguan$Date = as.Date(with(Nongzhanguan,paste(day,month,year,sep = "-")), "%d-%m-%Y")
+Nongzhanguan$Recorded = as.POSIXct(paste(Nongzhanguan$Date, Nongzhanguan$hour), 
+                                   format = "%Y-%m-%d %H")
+Nongzhanguan = Nongzhanguan %>% 
+select(Date, Recorded, season, PM_Nongzhanguan, DEWP, HUMI, PRES, TEMP, cbwd, Iws, precipitation,
+       Iprec)
+#US Post
+USPost$Date = as.Date(with(USPost,paste(day,month,year,sep = "-")), "%d-%m-%Y")
+USPost$Recorded = as.POSIXct(paste(USPost$Date, USPost$hour), format = "%Y-%m-%d %H")
+USPost = USPost %>% 
+  select(Date, Recorded, season, PM_US.Post, DEWP, HUMI, PRES, TEMP, cbwd, Iws, precipitation,
+         Iprec)
+```
+
+### Aggregating Average PM 2.5 Per Day
+
+```{r}
+#Sub-setting the aggregated mean PM 2.5 readings for each day in the four locations.
+D = aggregate(PM_Dongsi ~ Date, Dongsi, mean)
+DS = aggregate(PM_Dongsihuan ~ Date, Dongsihuan, mean)
+N = aggregate(PM_Nongzhanguan ~ Date, Nongzhanguan, mean)
+US = aggregate(PM_US.Post ~ Date, USPost, mean)
+```
+
+## Preliminary Plotting
+
+### Time Plots
+
+```{r}
+#Dongsi
+tsplot(D$Date, D$PM_Dongsi, type = "l", xlab = "Date Recorded", 
+     ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), main = "Dongsi")
+#Dongsihuan
+tsplot(DS$Date, DS$PM_Dongsihuan, type = "l", xlab = "Date Recorded", 
+     ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), main = "Dongsihuan")
+#Nongzhanguan
+tsplot(N$Date, N$PM_Nongzhanguan, type = "l", xlab = "Date Recorded", 
+     ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), main = "Nongzhanguan")
+#US Post
+tsplot(US$Date, US$PM_US.Post, type = "l", xlab = "Date Recorded", 
+     ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), main = "US Post")
+```
+
+### Periodograms
+
+```{r}
+#Dongsi
+periodogram(D$PM_Dongsi, main = "Dongsi")
+#Dongsihuan
+periodogram(DS$PM_Dongsihuan, main = "Dongsihuan")
+#Nongzhanguan
+periodogram(N$PM_Nongzhanguan, main = "Nongzhanguan")
+#US Post
+periodogram(US$PM_US.Post, main = "US Post")
+```
+
+### Smoothing
+
+```{r}
+#Smoothed Periodogram
+smooth = mvspec(D$PM_Dongsi, spans = 15, col = "blue", lwd = 2)
+#Determining Optimal Frequencies
+freq = data.frame(smooth$freq, smooth$spec)
+freq = freq %>% rename(Frequency = "smooth.freq") %>% rename(Spectrum = "smooth.spec") %>%
+        arrange(desc(Spectrum)) %>% filter(Spectrum >= 15000) %>% mutate(Cycle_Days = 1/Frequency)
+freq
+```
+
+## SARIMA Model Making
+
+### ACF and PACF Plots
+
+```{r}
+par(mfrow = c(2,3))
+#Dongsi
+tsplot(D$Date, D$PM_Dongsi, type = "l", xlab = "Date Recorded", 
+     ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), main = "Dongsi")
+acf(D$PM_Dongsi, main = "")
+pacf(D$PM_Dongsi, ylab = "PACF", main = "")
+#Log transformation of original data
+tsplot(D$Date, log(D$PM_Dongsi), type = "l", xlab = "Date Recorded", 
+     ylab = TeX(r"(log(PM2.5 Concentrate); $\mu g/m^3$)"), main = "Dongsi")
+acf(log(D$PM_Dongsi), main = "")
+pacf(log(D$PM_Dongsi), ylab = "PACF", main = "")
+
+par(mfrow = c(3,1))
+#Adding 2 Week Difference
+tsplot(diff(log(D$PM_Dongsi), 14), 
+       type = "l", xlab = "Date Recorded", 
+       ylab = TeX(r"(log(PM2.5 Concentrate); $\mu g/m^3$)"), main = "Dongsi")
+acf(diff(log(D$PM_Dongsi, 14)), main = "", lag.max = 100)
+pacf(diff(log(D$PM_Dongsi, 14)), ylab = "PACF", main = "", lag.max = 100)
+```
+
+### Stationarity Testing
+
+```{r, warning=FALSE}
+#Log of Dongsi Data
+adf.test(log(D$PM_Dongsi))
+kpss.test(log(D$PM_Dongsi))
+
+#Differenced Data
+adf.test(diff(log(D$PM_Dongsi), 14))
+kpss.test(diff(log(D$PM_Dongsi), 14))
+```
+### Model Output
+
+```{r}
+#Original Idea
+d1 = sarima(log(D$PM_Dongsi), p = 0, d = 0, q = 3, P = 0, D = 1, Q = 1, S = 14, 
+            no.constant = TRUE)
+d1$ttable
+#3rd AR NOT significant
+d2 = sarima(log(D$PM_Dongsi), p = 0, d = 0, q = 2, P = 0, D = 1, Q = 1, S = 14, 
+            no.constant = TRUE)
+d2$ttable
+#Adding P = 1 to see what happens
+d3 = sarima(log(D$PM_Dongsi), p = 0, d = 0, q = 2, P = 1, D = 1, Q = 1, S = 14, 
+            no.constant = TRUE)
+d3$ttable
+```
+
+### RMSE Calculation
+
+```{r}
+#Original Idea
+RMSE1 = tsRMSE(log(D$PM_Dongsi), 365, prob = 0.8, q = 3, D = 1, Q = 1, S = 14)
+#3rd AR NOT significant
+RMSE2 = tsRMSE(log(D$PM_Dongsi), 365, prob = 0.8, q = 2, D = 1, Q = 1, S = 14)
+#Adding P = 1 to see what happens
+RMSE3 = tsRMSE(log(D$PM_Dongsi), 365, prob = 0.8, q = 2, P = 1, D = 1, Q = 1, S = 14)
+```
+```{r}
+#Un-logging the RMSE
+#Original Idea
+#RMSE
+exp(RMSE1[[1]])
+#RMSE Obs. 1:5
+exp(RMSE1[[2]])
+#3rd AR NOT significant
+#RMSE
+exp(RMSE2[[1]])
+#RMSE Obs. 1:5
+exp(RMSE2[[2]])
+#Adding P = 1 to see what happens
+#RMSE
+exp(RMSE3[[1]])
+#RMSE Obs. 1:5
+exp(RMSE3[[2]])
+```
+
+### Ljung-Box Test
+
+```{r}
+#Original Idea
+Box.test(d1$fit$residuals, lag = 10, fitdf = 0, type = "Lj")
+#3rd AR NOT significant
+Box.test(d2$fit$residuals, lag = 10, fitdf = 0, type = "Lj")
+#Adding P = 1 to see what happens
+Box.test(d3$fit$residuals, lag = 10, fitdf = 0, type = "Lj")
+```
+
+### Best Model
+
+$$
+\boxed{\text{SARIMA}(0,0,2)\times(0,1,1)_{14}}
+$$
+
+## SARIMA Predictions
+
+### With Prediction SE
+
+```{r}
+par(mfrow = c(1,2))
+#5 Days Ahead
+pred1 = sarima.for(log(D$PM_Dongsi), p = 0, d = 0, q = 2, P = 0, D = 1, Q = 1, S = 14, 
+            no.constant = TRUE, n.ahead = 5)
+#1 Month Ahead
+pred2 = sarima.for(log(D$PM_Dongsi), p = 0, d = 0, q = 2, P = 0, D = 1, Q = 1, S = 14, 
+            no.constant = TRUE, n.ahead = 31)
+```
+
+### Overall Data With Predictions
+
+```{r}
+#5 Days Ahead
+par(mfrow = c(1,2))
+plot(D$Date, rep(0,nrow(D)), col = "white", xlim = c(D$Date[1], as.Date("2016-01-05")), 
+     ylim = c(0,600), xlab = "Date", ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), 
+     main = "Five Days Ahead")
+grid()
+box()
+lines(D$Date, D$PM_Dongsi)
+lines(seq.Date(as.Date("2016-01-01"), as.Date("2016-01-05"), "day"), exp(pred1$pred), 
+      col = "red")
+#1 Month Ahead
+plot(D$Date, rep(0,nrow(D)), col = "white", xlim = c(D$Date[1], as.Date("2016-01-31")), 
+     ylim = c(0,600), xlab = "Date", ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), 
+     main = "One Month Ahead")
+grid()
+box()
+lines(D$Date, D$PM_Dongsi)
+lines(seq.Date(as.Date("2016-01-01"), as.Date("2016-01-31"), "day"), exp(pred2$pred), 
+      col = "red")
+```
+
+### Zoomed In
+
+```{r}
+#5 Days Ahead
+par(mfrow = c(1,2))
+plot(D$Date[893:1076], rep(0,184), col = "white", xlim = c(D$Date[893], as.Date("2016-01-05")), 
+     ylim = c(0,600), xlab = "2015", ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), 
+     main = "Five Days Ahead")
+grid()
+box()
+lines(D$Date[893:1076], D$PM_Dongsi[893:1076])
+lines(seq.Date(as.Date("2016-01-01"), as.Date("2016-01-05"), "day"), exp(pred1$pred), 
+      col = "red")
+#1 Month Ahead
+plot(D$Date[893:1076], rep(0,184), col = "white", xlim = c(D$Date[893], as.Date("2016-01-31")), 
+     ylim = c(0,600), xlab = "2015-2016", ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), 
+     main = "One Month Ahead")
+grid()
+box()
+lines(D$Date[893:1076], D$PM_Dongsi[893:1076])
+lines(seq.Date(as.Date("2016-01-01"), as.Date("2016-01-31"), "day"), exp(pred2$pred), 
+      col = "red")
+```
+
+### Actual Predictions
+
+```{r}
+#Next 5 Day Predictions
+data.frame(Date = seq.Date(as.Date("2016/1/1"), as.Date("2016/1/5"), "days"),
+           PM2.5_Prediction = exp(pred1$pred[1:5]))
+#Next Month (Jan. 2016) Predictions
+data.frame(Date = seq.Date(as.Date("2016/1/1"), as.Date("2016/1/31"), "days"),
+           PM2.5_Prediction = exp(pred2$pred[1:31]))
+```
+
+## ARMA-GARCH Model Making
+
+### ACF and PACF Plots
+
+```{r}
+#Log transformation of original data
+tsplot(D$Date, log(D$PM_Dongsi), type = "l", xlab = "Date Recorded", 
+     ylab = TeX(r"(log(PM2.5 Concentrate); $\mu g/m^3$)"), main = "Dongsi")
+par(mfrow = c(2,2))
+acf(log(D$PM_Dongsi), main = "")
+pacf(log(D$PM_Dongsi), ylab = "PACF", main = "")
+#Squared Log transformation of original data
+acf(log(D$PM_Dongsi)^2, main = "")
+pacf(log(D$PM_Dongsi)^2, ylab = "PACF", main = "")
+```
+
+### Model Output
+
+```{r, results='hide'}
+#ARMA(2,2)-ARCH(2)
+d4 = garchFit(~arma(2,2) + garch(2,0), log(Dongsi$PM_Dongsi))
+#ARMA(2,1)-ARCH(2)
+d5 = garchFit(~arma(2,1) + garch(2,0), log(Dongsi$PM_Dongsi))
+#ARMA(1,1)-ARCH(2)
+d6 = garchFit(~arma(1,1) + garch(2,0), log(Dongsi$PM_Dongsi))
+#ARMA(1,1)-GARCH(2,1)
+d7 = garchFit(~arma(1,1) + garch(2,1), log(Dongsi$PM_Dongsi))
+#ARMA(1,1)-GARCH(1,2)
+d8 = garchFit(~arma(1,1) + garch(1,2), log(Dongsi$PM_Dongsi))
+```
+
+```{r}
+#ARMA(2,2)-ARCH(2)
+summary(d4)
+#ARMA(2,1)-ARCH(2)
+summary(d5)
+#ARMA(1,1)-ARCH(2)
+summary(d6)
+#ARMA(1,1)-GARCH(2,1)
+summary(d7)
+#ARMA(1,1)-GARCH(1,2)
+summary(d8)
+```
+
+### RMSE Calculation
+
+```{r, results='hide', warning=FALSE}
+#ARMA(2,2)-ARCH(2)
+RMSE4 = garchRMSE(log(Dongsi$PM_Dongsi), freq = 365, p = 2, q = 2, alpha = 2)
+#ARMA(2,1)-ARCH(2)
+RMSE5 = garchRMSE(log(Dongsi$PM_Dongsi), freq = 365, p = 2, q = 1, alpha = 2)
+#ARMA(1,1)-ARCH(2)
+RMSE6 = garchRMSE(log(Dongsi$PM_Dongsi), freq = 365, p = 1, q = 1, alpha = 2)
+#ARMA(1,1)-GARCH(2,1)
+RMSE7 = garchRMSE(log(Dongsi$PM_Dongsi), freq = 365, p = 1, q = 1, alpha = 2, beta = 1)
+#ARMA(1,1)-GARCH(1,2)
+RMSE8 = garchRMSE(log(Dongsi$PM_Dongsi), freq = 365, p = 1, q = 1, alpha = 1, beta = 2)
+```
+```{r}
+#Un-logging the RMSE
+#ARMA(2,2)-ARCH(2)
+#RMSE
+exp(RMSE4[[1]])
+#RMSE Obs. 1:5
+exp(RMSE4[[2]])
+#ARMA(2,1)-ARCH(2)
+#RMSE
+exp(RMSE5[[1]])
+#RMSE Obs. 1:5
+exp(RMSE5[[2]])
+#ARMA(1,1)-ARCH(2)
+#RMSE
+exp(RMSE6[[1]])
+#RMSE Obs. 1:5
+exp(RMSE6[[2]])
+#ARMA(1,1)-GARCH(2,1)
+#RMSE
+exp(RMSE7[[1]])
+#RMSE Obs. 1:5
+exp(RMSE7[[2]])
+#ARMA(1,1)-GARCH(1,2)
+#RMSE
+exp(RMSE8[[1]])
+#RMSE Obs. 1:5
+exp(RMSE8[[2]])
+```
+
+### Best Model
+
+$$
+\boxed{\text{ARMA}(1,1)-\text{GARCH}(1,2)}
+$$
+
+## ARMA-GARCH Predictions
+
+```{r}
+par(mfrow = c(1,2))
+#5 Days Ahead
+pred3 = predict(d8, n.ahead = 5)
+plot(D$Date, rep(0,nrow(D)), col = "white", xlim = c(D$Date[1], as.Date("2016-01-05")), 
+     ylim = c(0,600), xlab = "Date", ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), 
+     main = "Five Days Ahead")
+grid()
+box()
+lines(D$Date, D$PM_Dongsi)
+lines(seq.Date(as.Date("2016-01-01"), as.Date("2016-01-05"), "day"), exp(pred3$meanForecast), 
+      col = "red")
+#1 Month Ahead
+pred4 = predict(d8, n.ahead = 31)
+plot(D$Date, rep(0,nrow(D)), col = "white", xlim = c(D$Date[1], as.Date("2016-01-31")), 
+     ylim = c(0,600), xlab = "Date", ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), 
+     main = "One Month Ahead")
+grid()
+box()
+lines(D$Date, D$PM_Dongsi)
+lines(seq.Date(as.Date("2016-01-01"), as.Date("2016-01-31"), "day"), exp(pred4$meanForecast), 
+      col = "red")
+```
+
+### Zoomed In
+
+```{r}
+par(mfrow = c(1,2))
+#5 Days Ahead
+plot(D$Date[893:1076], rep(0,184), col = "white", xlim = c(D$Date[893], as.Date("2016-01-05")), 
+     ylim = c(0,600), xlab = "2015", ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), 
+     main = "Five Days Ahead")
+grid()
+box()
+lines(D$Date[893:1076], D$PM_Dongsi[893:1076])
+lines(seq.Date(as.Date("2016-01-01"), as.Date("2016-01-05"), "day"), exp(pred3$meanForecast), 
+      col = "red")
+#1 Month Ahead
+plot(D$Date[893:1076], rep(0,184), col = "white", xlim = c(D$Date[893], as.Date("2016-01-31")), 
+     ylim = c(0,600), xlab = "2015-2016", ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), 
+     main = "One Month Ahead")
+grid()
+box()
+lines(D$Date[893:1076], D$PM_Dongsi[893:1076])
+lines(seq.Date(as.Date("2016-01-01"), as.Date("2016-01-31"), "day"), exp(pred4$meanForecast), 
+      col = "red")
+```
+
+### Actual Predictions
+
+```{r}
+#Next 5 Day Predictions
+data.frame(Date = seq.Date(as.Date("2016/1/1"), as.Date("2016/1/5"), "days"),
+           PM2.5_Prediction = exp(pred3$meanForecast[1:5]))
+```
+
+```{r}
+#Next Month (Jan. 2016) Predictions
+data.frame(Date = seq.Date(as.Date("2016/1/1"), as.Date("2016/1/31"), "days"),
+           PM2.5_Prediction = exp(pred4$meanForecast[1:31]))
+```
+
+## Model Prediction Comparison
+
+### Prediction Plots
+
+```{r}
+#SARIMA
+par(mfrow = c(2,2))
+#5 Days Ahead
+plot(D$Date[893:1076], rep(0,184), col = "white", xlim = c(D$Date[893], as.Date("2016-01-05")), 
+     ylim = c(0,600), xlab = "2015", ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), 
+     main = "SARIMA Five Days Ahead")
+grid()
+box()
+lines(D$Date[893:1076], D$PM_Dongsi[893:1076])
+lines(seq.Date(as.Date("2016-01-01"), as.Date("2016-01-05"), "day"), exp(pred1$pred), 
+      col = "red")
+#1 Month Ahead
+plot(D$Date[893:1076], rep(0,184), col = "white", xlim = c(D$Date[893], as.Date("2016-01-31")), 
+     ylim = c(0,600), xlab = "2015-2016", ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), 
+     main = "SARIMA One Month Ahead")
+grid()
+box()
+lines(D$Date[893:1076], D$PM_Dongsi[893:1076])
+lines(seq.Date(as.Date("2016-01-01"), as.Date("2016-01-31"), "day"), exp(pred2$pred), 
+      col = "red")
+#ARMA-GARCH
+#5 Days Ahead
+plot(D$Date[893:1076], rep(0,184), col = "white", xlim = c(D$Date[893], as.Date("2016-01-05")), 
+     ylim = c(0,600), xlab = "2015", ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), 
+     main = "ARMA-GARCH Five Days Ahead")
+grid()
+box()
+lines(D$Date[893:1076], D$PM_Dongsi[893:1076])
+lines(seq.Date(as.Date("2016-01-01"), as.Date("2016-01-05"), "day"), exp(pred3$meanForecast), 
+      col = "red")
+#1 Month Ahead
+plot(D$Date[893:1076], rep(0,184), col = "white", xlim = c(D$Date[893], as.Date("2016-01-31")), 
+     ylim = c(0,600), xlab = "2015-2016", ylab = TeX(r"(PM2.5 Concentrate; $\mu g/m^3$)"), 
+     main = "ARMA-GARCH One Month Ahead")
+grid()
+box()
+lines(D$Date[893:1076], D$PM_Dongsi[893:1076])
+lines(seq.Date(as.Date("2016-01-01"), as.Date("2016-01-31"), "day"), exp(pred4$meanForecast), 
+      col = "red")
+```
+
+### Actual Predictions
+
+```{r}
+#Next 5 Day Predictions
+data.frame(Date = seq.Date(as.Date("2016/1/1"), as.Date("2016/1/5"), "days"),
+           SARIMA_Pred = exp(pred1$pred[1:5]),
+           ARMA_GARCH_Pred = exp(pred3$meanForecast[1:5]))
+```
+```{r}
+#Next Month (Jan. 2016) Predictions
+data.frame(Date = seq.Date(as.Date("2016/1/1"), as.Date("2016/1/31"), "days"),
+           SARIMA_Pred = exp(pred2$pred[1:31]),
+           ARMA_GARCH_Pred = exp(pred4$meanForecast[1:31]))
+```
+
+## Final Model
+
+$$
+\mathbf{\boxed{\text{ARMA}(1,1)-\text{GARCH}(1,2)}}
+$$

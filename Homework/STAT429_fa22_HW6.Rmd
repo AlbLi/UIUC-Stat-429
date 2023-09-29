@@ -1,0 +1,250 @@
+---
+title: "HW 06"
+author: "Name: Paul Holaway  , NetID: paulch2"
+date: 'Due: 10/06/2022 11:59pm'
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk
+library(xts)
+library(astsa)
+```
+
+
+
+### Question 1.
+
+(a) Compare the theoretical ACF and PACF of an ARMA(1, 1), an ARMA(1, 0), and  an ARMA(0, 1) series by plotting the ACFs and PACFs of the three series for  $\phi= 0.6$, $\theta= 0.9$. Comment on the capability of the ACF and PACF to determine  the order of the models.
+
+```{r}
+#Plot Orientation
+par(mfrow = c(2,3))
+#ACF and PACF Generation
+ACF11 = ARMAacf(ar = 0.6, ma = 0.9, lag.max = 20)[-1]
+PACF11 = ARMAacf(ar = 0.6, ma = 0.9, lag.max = 20, pacf = TRUE)
+ACF10 = ARMAacf(ar = 0.6, ma = 0, lag.max = 20)[-1]
+PACF10 = ARMAacf(ar = 0.6, ma = 0, lag.max = 20, pacf = TRUE)
+ACF01 = ARMAacf(ar = 0, ma = 0.9, lag.max = 20)[-1]
+PACF01 = ARMAacf(ar = 0, ma = 0.9, lag.max = 20, pacf = TRUE)
+#Graphing
+tsplot(ACF11, type = "h", xlab = "Lag", ylab = "ACF", ylim = c(-1,1))
+abline(h = 0)
+tsplot(ACF10, type = "h", xlab = "Lag", ylab = "ACF", ylim = c(-1,1))
+abline(h = 0)
+tsplot(ACF01, type = "h", xlab = "Lag", ylab = "ACF", ylim = c(-1,1))
+abline(h = 0)
+tsplot(PACF11, type = "h", xlab = "Lag", ylab = "PACF", ylim = c(-1,1), main = "ARMA(1,1)")
+abline(h = 0)
+tsplot(PACF10, type = "h", xlab = "Lag", ylab = "PACF", ylim = c(-1,1), main = "ARMA(1,0)")
+abline(h = 0)
+tsplot(PACF01, type = "h", xlab = "Lag", ylab = "PACF", ylim = c(-1,1), main = "ARMA(0,1)")
+abline(h = 0)
+```
+From the ACFs and PACFs, we can see that there is a distinct cutoff in the ACF for ARMA(0,1) and in the PACF for AMRA(1,0). Both cutoffs occur at $h=1$, which also happens to be the order of the models' non-zero parameter. The others just tail off as the lag $h$ increases. This means that the ACF does a good job at determining an ARMA(0,q) model and the PACF does a good job at determining an ARMA(p,0) model. In an ARMA(0,q) model, our ACF will cutoff at $h=q$, while the PACF will tail off. In an ARMA(p,0) model, our PACF will cutoff at $h=p$, while the ACF will tail off. For the ARMA(p,q) model (neither parameter is 0) both the ACF and PACF tail off, so there is no distinctive sign that can help us determine the order for an ARMA(p,q) model by just looking at these two graphs.
+
+(b) Use `arima.sim` to generate n = 100 observations from each of the three models  discussed in (a). Compute the sample ACFs and PACFs for each model and  compare it to the theoretical values. 
+
+```{r}
+#Setting Seed
+set.seed(143572)
+#Data Generation
+sim1 = arima.sim(list(order = c(1,0,1), ar = 0.6, ma = 0.9), n = 100)
+sim2 = arima.sim(list(order = c(1,0,0), ar = 0.6), n = 100)
+sim3 = arima.sim(list(order = c(0,0,1), ma = 0.9), n = 100)
+#ACF and PACF Plotting
+par(mfrow = c(2,3))
+ACF11_2 = acf(sim1, lag.max = 50, main = "")
+ACF10_2 = acf(sim2, lag.max = 50, main = "")
+ACF01_2 = acf(sim3, lag.max = 50, main = "")
+PACF11_2 = pacf(sim1, lag.max = 50, ylab = "PACF", main = "ARMA(1,1) Simulation")
+PACF10_2 = pacf(sim2, lag.max = 50, ylab = "PACF", main = "ARMA(1,0) Simulation")
+PACF01_2 = pacf(sim3, lag.max = 50, ylab = "PACF", main = "ARMA(0,1) Simulation")
+```
+When compared to the theoretical ACFs and PACFs we can see both similarities and differences in the simulation ACFs and PACFs. For the ARMA(1,1) model, we can see that the there is some kind of cyclical pattern in the ACF instead of it just tailing off, but that could be due to the simulated data. The PACF though is somewhat similar as it does indeed tail off as the lag increases. For the ARMA(1,0) model, we can see that the ACF does somewhat tail off like it is supposed to, but most of the values are statistically no different than 0 almost making look like it cuts off after lag 1. The PACF is is pretty close as it appears to "cut off" after lag 1 like it should with (almost) all of the remaining lags afterwards being statistically 0. For the ARMA(0,1) model, we can see that the ACF is also pretty close to what we would expect. It cuts off after lag 1 and (almost) all of the remaining lags afterwards are statistically 0. The PACF for it is also close to what we would expect as it tends to tail off. In general, we have close to what we would expect for all six graphs, but not exactly.
+
+(c) Repeat (b) but with n = 500. Compare it to the theoretical values and also compare with (b). 
+
+```{r}
+#Setting Seed
+set.seed(143572)
+#Data Generation
+sim1 = arima.sim(list(order = c(1,0,1), ar = 0.6, ma = 0.9), n = 500)
+sim2 = arima.sim(list(order = c(1,0,0), ar = 0.6), n = 500)
+sim3 = arima.sim(list(order = c(0,0,1), ma = 0.9), n = 500)
+#ACF and PACF Plotting
+par(mfrow = c(2,3))
+ACF11_2 = acf(sim1, lag.max = 50, main = "")
+ACF10_2 = acf(sim2, lag.max = 50, main = "")
+ACF01_2 = acf(sim3, lag.max = 50, main = "")
+PACF11_2 = pacf(sim1, lag.max = 50, ylab = "PACF", main = "ARMA(1,1) Simulation 2")
+PACF10_2 = pacf(sim2, lag.max = 50, ylab = "PACF", main = "ARMA(1,0) Simulation 2")
+PACF01_2 = pacf(sim3, lag.max = 50, ylab = "PACF", main = "ARMA(0,1) Simulation 2")
+```
+When compared to the theoretical values, we can see that increasing the sample size does make both the ACFs and PACFs closer. We can see a more clear cutoff for the PACF at lag 1 for the ARMA(1,0) model and ACF at lag 1 for the ARMA(0,1) model. The other four graphs also appear to tail off like they are supposed to as the lag increases. The cyclical pattern still exists in the ACF for ARMA(1,1). When $n=100$ the ARMA(1,0) model ACF appeared to cut off after lag 1 instead of tailing off like we would expect. One could easily get confused on the model's order because of this. The tailing off is much more obvious when $n=500$. In general, the tailing off and cutting off of the ACFs and PACFs is more pronounced when $n=500$ than when $n=100$, making it easier to determine the order of the models from the plots while making them closer to the theoretical values.
+
+---
+
+\newpage
+
+### Question 2.
+
+Let $c_t$ be the cardiovascular mortality series (`cmort`) discussed in previous homework, and let $X_t:=\nabla c_t$ be the differenced data.  
+
+(a) Plot $X_t$. Why does differencing seem reasonable in this case? Does the difference data looks stationary?
+
+```{r}
+par(mfrow = c(2,1))
+plot(cmort, ylab = "", main = "cmort")
+plot(diff(cmort), ylab = "", main = "First Difference of cmort")
+```
+From the original `cmort` data we can see that there appears to be a slight decreasing linear trend and a bit of a cyclical trend over time within the data. Therefore the process is clearly not stationary. The point of differencing is to aid in removal of a non-stationary trend to make the process stationary, so I would say differencing here would be reasonable. After we difference the `cmort` data once, we can see that both the slight decreasing linear trend and the cyclical trends are gone. The new data appears to be stationary as our average does not appear to change over time (about 0 now) and the variation of the data does not change over time (covariance depends on lag $h$).
+
+\newpage
+
+(b) Calculate and plot the sample ACF and PACF of $X_t$ and argue that an AR(1) is appropriate for $X_t$.  
+
+```{r}
+par(mfrow = c(1,2))
+acf(diff(cmort), ylim = c(-0.5,1), lag.max = 12, main = "")
+pacf(diff(cmort), ylab = "PACF" ,ylim = c(-0.5,1), lag.max = 12, main = "")
+mtext(expression(X[t]), side = 3, line = -2, outer = TRUE)
+```
+AR(1) would be an appropriate model for $X_t$ because we have the ACF tailing off and the PACF cutting off after lag 1. This are exactly what we would expect the ACF and PACF of an AR(1) model to look like.
+
+---
+
+\newpage
+
+### Question 3.
+
+Let $\{Y_t\}$ be a process of the special form $Y_t=\phi_2 Y_{t-2}+W_t$. Find the range of values $\phi_2$ for which the process is stationary and causal.
+
+To be stationary, we need all roots of the characteristic polynomial to be outside the unit circle.
+
+$$
+Y_t = \phi_2Y_{t-2}+W_t
+$$
+$$
+Y_t-\phi_2Y_{t-2}=W_t
+$$
+$$
+1-\phi_2B^2=0 \implies B^2=\frac{1}{\phi_2}\implies B=\pm\frac{1}{\sqrt{\phi_2}}
+$$
+$$
+\frac{1}{\sqrt{\phi_2}}>1 \text{ and} -\frac{1}{\sqrt{\phi_2}}<-1 \implies \sqrt{\phi_2}<1
+$$
+
+- If $\phi_2>0$, then $\implies 0<\phi_2<1$.
+- If $\phi_2<0$, then $\implies 0>\phi_2>-1$.
+
+Therefore the process $Y_t$ is stationary when $-1<\phi_2<1$.   
+
+From homework 5, we know that an AR(2) process is causal if and only if...
+
+- $\phi_1+\phi_2<1$
+- $\phi_2-\phi_1<1$
+- $|\phi_2|<1$
+
+Here we have $\phi_1=0$, so when we plug that into the three conditions...
+
+- $\phi_2<1$
+- $\phi_2<1$
+- $|\phi_2|<1$
+
+Which means that the process is both stationary and causal when we have $|\phi_2|<1$.
+
+---
+
+\newpage
+
+### Question 4.
+Sketch the autocorrelation function for the following ARMA model (use R):
+
+ARMA(1,1) with $\phi=0.7$ and $\theta=0.4$.
+
+```{r}
+ACF4 = ARMAacf(ar = 0.7, ma = 0.4, lag.max = 20)
+ACF4 = data.frame(Lag = 0:20, Value = ACF4)
+plot(NULL, xlim = c(0,20), ylim = c(-1,1), xlab = "Lag", ylab = "ACF", 
+     main = expression(ARMA(1,1)~~~phi==0.7~and~theta==0.4))
+grid()
+lines(ACF4, type = "h", lwd = 2)
+```
+
+---
+
+\newpage
+
+### Question 5.
+
+For the ARMA(1,2) model $Y_t=0.8Y_{t-1}+W_t +0.7 W_{t-1}+0.6W_{t-2}$, show that 
+$\rho(h)=0.8\rho(h-1)$ for $h>2$.
+
+$$
+Y_t-0.8Y_{t-1}=W_t+0.7W_{t-1}+0.6W_{t-2}
+$$
+$$
+(1-0.8B)Y_t=(1+0.7B+0.6B^2)W_t
+$$
+$$
+\implies \phi(B)=1-0.8B \text{ and } \theta(B)=1+0.7B+0.6B^2
+$$
+$$
+\psi(B) = \frac{1+0.7B+0.6B^2}{1-0.8B}=(1+0.7B+0.6B^2)(1+0.8B+0.8^2B^2+0.8^3B^3+\ldots)
+$$
+$$
+\psi(B)=1+(0.7+0.8)B+(0.6+(0.7)(0.8)+0.8^2)B^2+((0.6)(0.8)+(0.7)(0.8)^2+0.8^3)B^3+((0.6)(0.8)^2+(0.7)(0.8)^3+0.8^4)B^4+\ldots
+$$
+$$
+\text{Coefficients of }B^j\text{: }1+1.5+\sum_{j=2}^\infty(0.6)(0.8)^{j-2}+(0.7)(0.8)^{j-1}+0.8^j
+$$
+$$
+=1+1.5+(\frac{0.6}{0.8^2}+\frac{0.7}{0.8}+1)\sum_{j=2}^\infty0.8^j
+$$
+$$
+=1+1.5+2.8125\sum_{j=2}^\infty0.8^j
+$$
+$$
+\sum_{j=0}^\infty\psi_j^2=1^2+1.5^2+(2.8125)^2(\sum_{j=2}^\infty0.8^j)^2=1+2.25+(2.8125)^2\sum_{j=2}^\infty0.64^j=12.25
+$$
+$$
+\rho(h)=\frac{\sum_{j=0}^\infty\psi_j\psi_{j+h}}{\sum_{j=0}^\infty\psi_j^2}=\frac{\sum_{j=0}^\infty\psi_j\psi_{j+h}}{12.25}
+$$
+
+- $j=0$
+  - $h=0 \implies \frac{1}{12.25}$
+  - $h=1 \implies \frac{1.5}{12.25}$
+  - $h=2 \implies \frac{2.8125*0.8^2}{12.25}$
+  - $h=3 \implies \frac{2.8125*0.8^3}{12.25}=\frac{2.8125*0.8^2}{12.25}*0.8\implies\rho(3)=0.8\rho(2)$
+  - $h=4 \implies \frac{2.8125*0.8^4}{12.25}=\frac{2.8125*0.8^3}{12.25}*0.8\implies\rho(4)=0.8\rho(3)$
+  - $h=5 \implies \frac{2.8125*0.8^5}{12.25}=\frac{2.8125*0.8^4}{12.25}*0.8\implies\rho(5)=0.8\rho(4)$
+
+- $j=1$
+  - $h=0 \implies \frac{1.5^2}{12.25}$
+  - $h=1 \implies \frac{1.5*2.8125*0.8^2}{12.25}$
+  - $h=2 \implies \frac{1.5*2.8125*0.8^3}{12.25}=\frac{1.5*2.8125*0.8^2}{12.25}*0.8\implies\rho(2)=0.8\rho(1)$
+  - $h=3 \implies \frac{1.5*2.8125*0.8^4}{12.25}=\frac{1.5*2.8125*0.8^3}{12.25}*0.8\implies\rho(3)=0.8\rho(2)$
+  - $h=4 \implies \frac{1.5*2.8125*0.8^5}{12.25}=\frac{1.5*2.8125*0.8^4}{12.25}*0.8\implies\rho(4)=0.8\rho(3)$
+  - $h=5 \implies \frac{1.5*2.8125*0.8^6}{12.25}=\frac{1.5*2.8125*0.8^5}{12.25}*0.8\implies\rho(5)=0.8\rho(4)$
+
+- $j\ge2$
+  - $h=0 \implies \frac{2.8125*0.8^j*0.8^j}{12.25}=\frac{2.8125*0.8^{2j}}{12.25}$
+  - $h=1 \implies \frac{2.8125*0.8^j*0.8^{j+1}}{12.25}=\frac{2.8125*0.8^{2j+1}}{12.25}=\frac{2.8125*0.8^{2j}}{12.25}*0.8\implies\rho(1)=0.8\rho(0)$
+  - $h=2 \implies \frac{2.8125*0.8^j*0.8^{j+2}}{12.25}=\frac{2.8125*0.8^{2j+2}}{12.25}=\frac{2.8125*0.8^{2j+1}}{12.25}*0.8\implies\rho(2)=0.8\rho(1)$
+  - $h=3 \implies \frac{2.8125*0.8^j*0.8^{j+3}}{12.25}=\frac{2.8125*0.8^{2j+3}}{12.25}=\frac{2.8125*0.8^{2j+2}}{12.25}*0.8\implies\rho(3)=0.8\rho(2)$
+  - $h=4 \implies \frac{2.8125*0.8^j*0.8^{j+4}}{12.25}=\frac{2.8125*0.8^{2j+4}}{12.25}=\frac{2.8125*0.8^{2j+3}}{12.25}*0.8\implies\rho(4)=0.8\rho(3)$
+  - $h=5 \implies \frac{2.8125*0.8^j*0.8^{j+5}}{12.25}=\frac{2.8125*0.8^{2j+5}}{12.25}=\frac{2.8125*0.8^{2j+4}}{12.25}*0.8\implies\rho(5)=0.8\rho(4)$
+  
+When ...
+
+- $j=0$: $\rho(h)=0.8\rho(h-1)$; $h>2$
+- $j=1$: $\rho(h)=0.8\rho(h-1)$; $h>1$
+- $j\ge2$; $\rho(h)=0.8\rho(h-1)$; $h>0$
+
+Which means that for the entire model $\rho(h) = 0.8\rho(h-1)$ when $h>2$.
+
+$$
+\implies \boxed{\rho(h)=0.8\rho(h-1) \text{ for } h>2}
+$$

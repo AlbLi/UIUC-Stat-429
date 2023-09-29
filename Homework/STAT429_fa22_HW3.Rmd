@@ -1,0 +1,285 @@
+---
+title: "HW 03"
+author: "Name: Paul Holaway, NetID: paulch2  "
+date: 'Due: 9/15/2022 11:59pm'
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(xts)
+library(astsa)
+```
+
+* Unless stated otherwise,  $W_t$ is a white noise process with variance $\sigma_w^2$. 
+  + ($W_t$ are independent with zero means and variance $\sigma_w^2$.)
+* Show your full work to receive full credit. 
+* For question 1 ~ question 3, you may use your answers from HW 02 directly. 
+
+### Question 1
+
+Consider the time series 
+
+$$X_t=\beta_1 + \beta_2 t + W_t,$$
+
+where $\beta_1$ and $\beta_2(\neq 0)$ are known constants. 
+
+(a) Is $X_t$ stationary? Why or why not?
+
+Recall:
+$$
+\mu_X(t)=\beta_1+\beta_2t
+$$
+$$
+\gamma_X(s,t)= \begin{cases} \sigma^2_w &; s=t \\ 0 &; s \neq t \end{cases}
+$$
+$X_t$ is not stationary as the mean is not constant. It depends on $t$.
+
+(b) Is $Y_t=X_t - X_{t-1}$ stationary? Support your answer.
+
+Recall:
+$$
+\mu_Y(t)=\beta_2
+$$
+$$
+\gamma_Y(s,t)= \begin{cases} 2\sigma^2_w &; s=t \\ -\sigma^2_w &; |s-t| = 1 \\ 0 &; |s-t| \ge 2 \end{cases}
+$$
+$Y_t$ is stationary as the mean is constant (does not depend on $t$) and the autocovariance function only depends on the lag (time difference between $s$ and $t$).
+
+### Question 2
+
+For a moving average process of the form 
+
+$$X_t = 0.1 W_{t-2} + 0.2 W_{t-1} +  W_{t}, $$
+
+is this process stationary? Support your answer.
+
+Recall:
+$$
+\mu_X(t)=0
+$$
+$$
+\gamma_X(s,t)=\begin{cases} 1.05\sigma^2_w &; s=t \\ 0.22\sigma^2_w &; |s-t| = 1 \\ 0.1\sigma^2_w &; |s-t| = 2 \\ 0 &; |s-t| \ge 3 \end{cases}
+$$
+$X_t$ is stationary as the mean is constant (does not depend on $t$) and the autocovariance function only depends on the lag (time difference between $s$ and $t$).
+
+### Question 3
+
+A time series with a periodic component can be constructed from 
+
+$$X_t = U_1 \sin (2\pi \omega_0 t) + U_2 \cos  (2\pi \omega_0 t) ,$$
+where $U_1$ and $U_2$ are independent random variables with zero means and variances $\sigma^2$. The constant $\omega_0$ determines the period or time it takes the process to make one complete cycle. Is this process stationary? Why or why not?
+
+Recall:
+$$
+\mu_X(t)=0
+$$
+$$
+\gamma_X(t)=\begin{cases} \sigma^2 &; s=t \\ \sigma^2cos(2\pi\omega_0(s-t)) &; s \neq t \end{cases}
+$$
+$X_t$ is stationary as the mean is constant (does not depend on $t$) and the autocovariance function only depends on the lag (time difference between $s$ and $t$).
+
+### Question 4
+
+Suppose that $U$ is a random variable with zero mean with finite variance $\sigma^2$. Define a time series by $X_t=(-1)^{t} U$. Find the mean function and autocovariance function of $X_t$. Is $X_t$ stationary? Why or why not?
+
+$$
+\mu_X(t)=\mathbb{E}((-1)^tU)=(-1)^t\mathbb{E}(U)=(-1)^t*0
+$$
+$$
+\implies \boxed{\mu_X(t)=0}
+$$
+$$
+\gamma_X(s,t)=Cov(X_s,X_t)=Cov((-1)^sU,(-1)^tU)=(-1)^{s+t}Cov(U,U)=(-1)^{s+t}Var(U)=(-1)^{s+t}\sigma^2
+$$
+$$
+\implies \boxed{\gamma_X(s,t)=\begin{cases} \sigma^2 &; |s-t|=Even\\ -\sigma^2 &; |s-t|=Odd \end{cases}}
+$$
+$X_t$ is stationary as the mean is constant (does not depend on $t$) and the autocovariance function only depends on the lag (time difference between $s$ and $t$).
+
+### Question 5 
+
+(a) Simulate a series of $n=500$ Gaussian white noise observations and compute the sample ACF, $\hat{\rho}(h)$, to lag 20. Compare the sample ACF you obtain to the actual ACF, $\rho(h)$.
+
+```{r echo = TRUE}
+set.seed(143572)
+w1 = rnorm(500, mean = 0, sd = 1)
+acf(w1, ylab = "ACF of White Noise Observations", lag.max = 20, main = "")
+```
+$$
+\rho_X(s,t)=\begin{cases} 1 &; s=t \\ 0 &; s \neq t \end{cases}
+$$
+From the simulated white noise we can see that the sample ACF matches the actual ACF. When the lag $h=0$, we see that the sample ACF $\hat{\rho}_X(0)=1$ which matches what the actual ACF $\rho_X(0)=1$. Then from the plot we can see that for all $h\neq0$ the sample ACF is statistically no different than 0, which matches what the actual ACF should be.
+
+\newpage
+
+(b) Repeat part (a) using only $n=50$. Does changing $n$ affect the results?
+
+```{r echo = TRUE}
+set.seed(143572)
+w2 = rnorm(50, mean = 0, sd = 1)
+acf(w2, ylab = "ACF of White Noise Observations", lag.max = 20, main = "")
+```
+Changing $n$ does not affect the results. $\hat{\rho}_X(0)=\rho_X(0)=1$ and for all other $\rho_X(h)$ with $h \neq0$ are still statistically no different than 0, so $\hat{\rho}_X(0)=\rho_X(0)=0$. We would most likely not see any differences unless we made $n$ really small.
+
+### Question 6
+Suppose that $X_t=\mu+W_t+\theta W_{t-1}$, where $W_t\sim WN(0,\sigma_w^2)$.
+
+(a) Show the mean function is $\mu$.
+
+$$
+\mu_X(t)= \mathbb{E}(X_t)=\mathbb{E}(\mu+W_t+\theta W_{t-1})=\mathbb{E}(\mu)+\mathbb{E}(W_t)+\mathbb{E}(\theta W_{t-1})=\mu+0+0
+$$
+$$
+\implies \boxed{\mu_X(t)=\mu}
+$$
+
+\newpage
+
+(b) Show that the autocovariance function of $X_t$ is given by $\gamma_{x} (t,t)=\sigma_w^2 (1+\theta^2)$, $\gamma_{x} (t\pm 1,t)=\sigma_w^2 \theta$, and $\gamma_{x} (t+h,t)=0$ otherwise.
+
+$$
+\gamma_X(s,t)=Cov(X_s,X_t)=Cov(\mu+W_s+\theta W_{s-1},\mu+W_s+\theta W_{t-1})=Cov(W_s+\theta W_{s-1},W_t+\theta W_{t-1})
+$$
+$$
+=Cov(W_s,W_t)+\theta Cov(W_{s-1},W_t)+\theta Cov(W_s,W_{t-1})+\theta^2 Cov(W_{s-1},W_{t-1})
+$$
+
+1. $s=t \implies \gamma_X(s,t)=\sigma^2_w+0+0+\theta^2 \sigma^2_w=(1+\theta^2)\sigma^2_w$
+2. $s=t+1 \implies \gamma_X(s,t)=0+\theta \sigma^2_w+0+0=\theta \sigma^2_w$
+3. $s=t-1 \implies \gamma_X(s,t)=0+0+\theta \sigma^2_w+0=\theta \sigma^2_w$
+4. $s=t+2 \implies \gamma_X(s,t)=0+0+0+0=0$
+5. $s=t-2 \implies \gamma_X(s,t)=0+0+0+0=0$
+
+$$
+\implies \boxed{\gamma_X(s,t)=\begin{cases} (1+\theta^2)\sigma^2_w &; s=t \\ \theta \sigma^2_w &; |s-t|=1 \\ 0 &; |s-t| \ge 2 \end{cases}}
+$$
+
+(c) Show that $x_t$ is stationary for all values of $\theta\in \mathbb{R}$.
+
+First, the mean function, $\mu_X(t) = \mu$. Since the mean function does not depend on the value of $\theta$,it will be constant. Second, the autocovariance function...
+
+1. If $\theta = 0$
+
+$$
+\gamma_X(s,t)=\begin{cases} \sigma^2_w &; s=t \\ 0 &; |s-t| \ge 1 \end{cases}
+$$
+
+2. If $\theta > 0$
+
+$$
+\gamma_X(s,t)=\begin{cases} (1+\theta^2)\sigma^2_w >0&; s=t \\ \theta \sigma^2_w>0 &; |s-t|=1 \\ 0 &; |s-t| \ge 2 \end{cases}
+$$
+
+3. If $\theta < 0$
+
+$$
+\gamma_X(s,t)=\begin{cases} (1+\theta^2)\sigma^2_w >0&; s=t \\ \theta \sigma^2_w<0 &; |s-t|=1 \\ 0 &; |s-t| \ge 2 \end{cases}
+$$
+For each of the three cases we can see that regardless of what value of $\theta$ is chosen, the autocovariance function still just depends on the lag. Also, there is no value of $\theta$ that can make $\gamma_X(s,t)<0$ when $s=t$ nor a value that would make $\gamma_X(s,t)$ undefined. Therefore $X_t$ is stationary for all values of $\theta \in \mathbb{R}$.
+
+\newpage
+
+(d) Note that $$Var(\bar{X})=\frac{1}{n}\sum_{h=-n}^{n} \left( 1-\frac{|h|}{n} \right)\gamma_{x} (h).$$ Using this, calculate $Var(\bar{X})$ for estimating $\mu$ when $\theta=1$, $\theta=0$, and $\theta=-1$.
+
+$$
+Var(\bar{X})=\frac{1}{n}\sum_{h=-n}^{n} \left( 1-\frac{|h|}{n} \right)\gamma_{x} (h)=\frac{\gamma_X(0)}{n}+\frac{2}{n}\sum_{h=1}^n(1-\frac{h}{n})\gamma_X(h)
+$$
+
+- $\theta=1$
+
+$$
+Var(\bar{X})=\frac{(1+(1)^2)\sigma^2_w}{n}+\frac{2}{n}(1-\frac{1}{n})\sigma^2_w=\frac{2\sigma^2_w}{n}+\frac{2\sigma^2_w}{n}-\frac{2\sigma^2_w}{n^2}
+$$
+$$
+\implies \boxed{Var(\bar{X})=\frac{4\sigma^2_w}{n}-\frac{2\sigma^2_w}{n^2}}
+$$
+
+- $\theta = 0$
+
+$$
+Var(\bar{X})=\frac{(1+(0)^2)\sigma^2_w}{n}+\frac{2}{n}(1-\frac{1}{n})(0)=\frac{\sigma^2_w}{n}
+$$
+$$
+\implies \boxed{Var(\bar{X})=\frac{\sigma^2_w}{n}}
+$$
+
+- $\theta = -1$
+
+$$
+Var(\bar{X})=\frac{(1+(-1)^2)\sigma^2_w}{n}+\frac{2}{n}(1-\frac{1}{n})(-\sigma^2_w)=\frac{2\sigma^2_w}{n}-\frac{2\sigma^2_w}{n}+\frac{2\sigma^2_w}{n^2}
+$$
+$$
+\implies \boxed{Var(\bar{X})=\frac{2\sigma^2_w}{n^2}}
+$$
+
+(e) (grad-only) In time series, the sample size $n$ is typically large, so that $(n-1)/n\approx 1$. With this as a consideration, comment on the results of (d). In particular, how does accuracy in the estimate of the mean $\mu$ change for the three different cases?
+
+In all three cases $Var(\bar{X}) \rightarrow 0$ as $n \rightarrow \infty$. However, the rate at which $Var(\bar{X}) \rightarrow 0$ will be different for the three different cases. We know that any constant over $n^2$ will approach $0$ faster than when over $n$. Even if the constants are different, the quantity will be smaller when dividing by $n^2$ than when dividing by $n$ if $n$ is large. We can also say that for large $n$, $\frac{2\sigma^2_w}{n}-\frac{2\sigma^2_w}{n^2}=\frac{2\sigma^2_w(2n-1)}{n^2}\approx\frac{4\sigma^2_w}{n}$. This means that for large $n$, if $\theta = -1$ the variance will be the smallest, if $\theta = 0$ the variance will be the next smallest, and if $\theta = 1$ the variance will be the largest. The numerator will be larger for the variance when $\theta = 1$ than when $\theta = 0$. As a result, the accuracy of the estimate of the mean $\mu$ will be the best when $\theta = -1$, the next best when $\theta = 0$, and the worst when $\theta = 1$.
+
+
+### Question 7 (Grad-Only)
+
+Consider the time series 
+
+$$X_t=\beta_1 + \beta_2 t + W_t,$$
+
+where $\beta_1$ and $\beta_2(\neq 0)$ are known constants. Let 
+
+$$V_t =\frac{1}{2q+1} \sum_{j=-q}^{j=q} X_{t-j}$$
+Show mean and simplified expression for the autocovariance function of $V_t$. Is $V_t$ stationary?
+
+$$
+\mathbb{E}(V_t)=\mathbb{E}(\frac{1}{2q+1}\sum_{j=-q}^{j=q}X_{t-j})=\frac{1}{2q+1}\sum_{j=-q}^{j=q}\mathbb{E}(X_{t-j})=\frac{1}{2q+1}(\mathbb{E}(X_t)+\sum_{j=1}^q\mathbb{E}(X_{t-j})+\sum_{j=-1}^{-q}\mathbb{E}(X_{t-j}))
+$$
+$$
+\mathbb{E}(X_t)=\mathbb{E}(\beta_1+\beta_2t+W_t)=\mathbb{E}(\beta_1)+\mathbb{E}(\beta_2t)+\mathbb{E}(W_t)=\beta_1+\beta_2t
+$$
+$$
+\mathbb{E}(X_{t-j})=\mathbb{E}(\beta_1+\beta_2(t-j)+W_{t-j})=\mathbb{E}(\beta_1)+\mathbb{E}(\beta_2(t-j))+\mathbb{E}(W_{t-j})=\beta_1+\beta_2t-\beta_2j
+$$
+$$
+\sum_{j=1}^q(\beta_1+\beta_2t-\beta_2j=(\beta_1+\beta_2t)q-\beta_2\sum_{j=1}^qj)
+$$
+$$
+\sum_{j=-1}^{-q}(\beta_1+\beta_2t-\beta_2j=(\beta_1+\beta_2t)(-q)-\beta_2\sum_{j=-1}^{-q}j)
+$$
+$$
+\mathbb{E}(V_t)=\frac{\beta_1+\beta_2t+\beta_1q+\beta_2tq-\beta_2\sum_{j=1}^qj-\beta_1q-\beta_2tq-\sum_{j=-1}^{-q}j}{2q+1}
+$$
+$$
+\mathbb{E}(V_t)=\frac{\beta_1+\beta_2t-\beta_2(1+2+3+\ldots+q)-\beta_2(-1-2-3-\ldots-q)}{2q+1}
+$$
+$$
+\boxed{\mathbb{E}(V_t)=\frac{\beta_1+\beta_2t}{2q+1}}
+$$
+$$
+\gamma_X(s,t)=Cov(V_s,V_t)=Cov(\frac{1}{2q+1}\sum_{j=-q}^{j=q}X_{s-j},\frac{1}{2q+1}\sum_{j=-q}^{j=q}X_{t-j})=\frac{1}{(2q+1)^2}Cov(\sum_{j=-q}^{j=q}X_{s-j},\sum_{j=-q}^{j=q}X_{t-j})
+$$
+$=\frac{1}{(2q+1)^2}Cov(\beta_1+\beta_2s+W_s+\sum_{j=1}^q\beta_1+\beta_2(s-j)+W_{s-j}+\sum_{j=-1}^q\beta_1+\beta_2(s-j)+W_{s-j},\beta_1+\beta_2t+W_t+\sum_{j=1}^q\beta_1+\beta_2(t-j)+W_{t-j}+\sum_{j=-1}^{-q}\beta_1+\beta_2(t-j)+W_{t-j})$
+
+$=\frac{1}{(2q+1)^2}Cov(\beta_1+\beta_2s+W_s+\beta_1q+\beta_2sq-\beta_2\sum_{j=1}^qj+\sum_{j=1}^qW_{s-j}-\beta_1q-\beta_2sq-\beta_2\sum_{j=-1}^{-q}j+\sum_{j=1}^{-q}W_{s-j},\beta_1+\beta_2t+W_t+\beta_1q+\beta_2tq-\beta_2\sum_{j=1}^qj+\sum_{j=1}^qW_{t-j}-\beta_1q-\beta_2tq-\beta_2\sum_{j=-1}^{-q}j+\sum_{j=1}^{-q}W_{t-j})$
+
+$$
+=\frac{1}{(2q+1)^2}Cov(\beta_1+\beta_2s+\sum_{j=-q}^{j=q}W_{s-j},\beta_1+\beta_2t+\sum_{j=-q}^{j=q}W_{t-j})
+$$
+$$
+=\frac{1}{(2q+1)^2}Cov(\beta_2s+\sum_{j=-q}^{j=q}W_{s-j},\beta_2t+\sum_{j=-q}^{j=q}W_{t-j})
+$$
+$$
+=\frac{1}{(2q+1)^2}Cov(\sum_{j=-q}^{j=q}W_{s-j},\sum_{j=-q}^{j=q}W_{t-j})
+$$
+$$
+=\frac{1}{(2q+1)^2}\sum_{j=-q}^{j=q}Cov(W_{s-j},W_{t-j})
+$$
+$$
+\forall j \rightarrow Cov(W_{s-j},W_{t-j})=\begin{cases} \sigma^2_w &; s=t \\ 0 &; s \neq t \end{cases}
+$$
+$$
+=\begin{cases} \frac{1}{(2q+1)^2}\sum_{j=-q}^{j=q}\sigma^2_w&; s=t \\ 0 &; s \neq t \end{cases}
+$$
+$$
+\boxed{\gamma_x(s,t)=\begin{cases} \frac{\sigma^2_w}{2q+1} &; s=t \\ 0 &; s \neq t \end{cases}}
+$$
+$V_t$ is not stationary as the mean is not constant. It depends on $t$.

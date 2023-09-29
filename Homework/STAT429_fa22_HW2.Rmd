@@ -1,0 +1,295 @@
+---
+title: "HW 02"
+author: "Name: Paul Holaway, NetID: paulch2  "
+date: 'Due: 9/8/2022 11:59pm'
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(xts)
+library(astsa)
+```
+
+* Unless stated otherwise,  $W_t$ is a white noise process with variance $\sigma_w^2$. 
+  + ($W_t$ are independent with zero means and variance $\sigma_w^2$.)
+* Show your full work to receive full credit. 
+
+
+### Question 1
+Suppose $E[X]=2$, $Var(X) = 16$, $E(Y) = 0$, $Var(Y) = 25$, and $Corr(X,Y) =- 0.25$. Find:
+
+(a) $Var(X+Y)$.
+
+$$
+Var(X+Y)=Cov(X+Y,X+Y)
+$$
+$$
+=Cov(X,X)+Cov(X,Y)+Cov(Y,X)+Cov(Y,Y)
+$$
+$$
+=Var(X)+Var(Y)+2Cov(X,Y)
+$$
+$$
+Cov(X,Y)=Corr(X,Y)*\sqrt{Var(X)Var(Y)}
+$$
+$$
+\implies Cov(X,Y)=-0.25*\sqrt{16*25}=-0.25*20=-5
+$$
+$$
+Var(X+Y)=16+25+2(-5)=16+25-10
+$$
+$$
+\implies \boxed{Var(X+Y)=31}
+$$
+
+(b) $Cov(X, X + Y)$.
+
+$$
+Cov(X, X+Y)=Cov(X,X)+Cov(X,Y)=Var(X)+Cov(X,Y)=16-5
+$$
+$$
+\implies \boxed{Cov(X,X+Y)=11}
+$$
+
+(c) $Corr(X+Y,X-Y)$.
+
+$$
+Corr(X+Y,X-Y)=\frac{Cov(X+Y,X-Y)}{\sqrt{Var(X+Y)Var(X-Y)}}=\frac{Cov(X-Y,X+Y)}{\sqrt{Var(X+Y)Var(X-Y)}}
+$$
+$$
+=\frac{Cov(X,X+Y)-Cov(Y,X+Y)}{\sqrt{Var(X+Y)Var(X-Y)}}
+$$
+$$
+Cov(Y,X+Y)=Cov(Y,X)+Cov(Y,Y)=Cov(X,Y)+Var(Y)=-5+25=20
+$$
+$$
+Var(X-Y)=Cov(X,X)-Cov(X,Y)-Cov(Y,X)+Cov(Y,Y)
+$$
+$$
+=Var(X)+Var(Y)-2Cov(X,Y)=16+25-2(-5)=51
+$$
+$$
+\implies Corr(X+Y,X-Y)=\frac{11-20}{\sqrt{31*51}}
+$$
+$$
+\implies \boxed{Corr(X+Y,X-Y)\approx-0.2263}
+$$
+\newpage
+
+### Question 2
+If X and Y are dependent but $Var(X)=Var(Y)$, find $Cov(X+Y,X-Y)$.
+
+$$
+Cov(X+Y,X-Y)=Cov(X,X-Y)+Cov(Y,X-Y)
+$$
+$$
+=Cov(X,X)-Cov(X,Y)+Cov(Y,X)-Cov(Y,Y)=Cov(X,X)-Cov(X,Y)+Cov(X,Y)-Cov(Y,Y)
+$$
+$$
+=Var(X)-Var(Y)
+$$
+$$
+\implies Var(X) = Var(Y) \implies Var(X)-Var(Y)=0
+$$
+$$
+\implies \boxed{Cov(X+Y,X-Y)=0}
+$$
+
+### Question 3
+
+Consider the time series 
+
+$$X_t=\beta_1 + \beta_2 t + W_t,$$
+
+where $\beta_1$ and $\beta_2$ are known constants. 
+
+(a) Find mean function, autocovariance function, and autocorrelation function of $X_t$.
+
+$$
+\mu_X(t)=\mathbb{E}(X_t)=\mathbb{E}(\beta_1+\beta_2t+W_t)=\mathbb{E}(\beta_1)+\mathbb{E}(\beta_2t)+\mathbb{E}(W_t)
+$$
+$$
+=\beta_1+\beta_2t+0
+$$
+$$
+\implies\boxed{\mu_X(t)=\beta_1+\beta_2t}
+$$
+$$
+\gamma_X(s,t)=Cov(X_s,X_t)=Cov(\beta_1+\beta_2s+W_s,\beta_1+\beta_2t+W_t)
+$$
+$$
+=Cov(\beta_2s+W_s,\beta_2t+W_t)=Cov(\beta_2s,\beta_2t+W_t)+Cov(W_s,\beta_2t+W_t)
+$$
+$$
+=Cov(\beta_2s,\beta_2t)+Cov(\beta_2s,W_t+Cov(W_s,\beta_2t))+Cov(W_s,W_t)
+$$
+$$
+=0+0+0+Cov(W_s,W_t)=Cov(W_s,W_t)
+$$
+$$
+\implies\boxed{\gamma_X(s,t)= \begin{cases} \sigma^2_w  & ;s=t \\ 0 & ;s \neq t \end{cases}}
+$$
+$$
+\rho_X(s,t)=\frac{\gamma_X(s,t)}{\sqrt{\gamma_X(s,s)\gamma_X(t,t)}}=\frac{\gamma_X(s,t)}{\sqrt{\sigma^2_w*\sigma^2_w}}=\frac{\gamma_X(s,t)}{\sigma^2_w}
+$$
+$$
+\implies \boxed{\rho_X(s,t)=\begin{cases} 1 & ;s=t \\ 0 & ;s\neq t \end{cases}}
+$$
+\newpage
+(b) Find mean function, autocovariance function, and autocorrelation function of $Y_t=X_t - X_{t-1}$.
+
+$$
+\mu_Y(t)=\mathbb{E}(Y_t)=\mathbb{E}(X_t-X_{t-1})=\mathbb{E}(X_t)-\mathbb{E}(X_{t-1})
+$$
+$$
+\mathbb{E}(X_{t-1})=\mathbb{E}(\beta_1+\beta_2(t-1)+W_{t-1})=\mathbb{E}(\beta_1)+\mathbb{E}(\beta_2(t-1))+\mathbb{E}(W_{t-1})
+$$
+$$
+\implies \mathbb{E}(X_{t-1})=\beta_1+\beta_2(t-1)+0
+$$
+$$
+\mu_Y(t)=\beta_1+\beta_2t-(\beta_1+\beta_2(t-1))=\beta_1+\beta_2t-\beta_1-\beta_2t+\beta_2
+$$
+$$
+\implies \boxed{\mu_Y(t)=\beta_2}
+$$
+$$
+\gamma_Y(s,t)=Cov(Y_s,Y_t)=Cov(X_s-X_{s-1},X_t-X_{t-1})
+$$
+$$
+=Cov(\beta_1+\beta_2s+W_s-(\beta_1+\beta_2(s-1)+W_{s-1}),\beta_1+\beta_2t+W_t-(\beta_1+\beta_2(t-1)+W_{t-1}))
+$$
+$$
+=Cov(\beta_2+W_s-W_{s-1},\beta_2+W_t-W_{t-1})=Cov(W_s-W_{s-1},W_t-W_{t-1})
+$$
+$$
+=Cov(W_s,W_t-W_{t-1})-Cov(W_{s-1},W_t-W_{t-1})
+$$
+$$
+=Cov(W_s,W_t)-Cov(W_s,W_{t-1})-Cov(W_{s-1},W_t)+Cov(W_{s-1},W_{t-1})
+$$
+
+1. $s=t\implies\gamma_Y(s,t)=\sigma^2_w-0-0+\sigma^2_w=2\sigma^2_w$
+2. $s=t+1\implies\gamma_Y(s,t)=0-0-\sigma^2_w+0=-\sigma^2_w$
+3. $s=t-1\implies\gamma_Y(s,t)=0-\sigma^2_w-0+0=-\sigma^2_w$
+4. $s=t+2\implies\gamma_Y(s,t)=0-0-0+0=0$
+5. $s=t-2\implies\gamma_Y(s,t)=0-0-0+0=0$
+
+$$
+\implies\boxed{\gamma_Y(s,t)=\begin{cases} 2\sigma^2_w & ;s=t \\ -\sigma^2_w & ;|s-t|=1 \\ 0 & ;|s-t|\ge2 \end{cases}}
+$$
+$$
+\rho_Y(s,t)=\frac{\gamma_Y(s,t)}{\sqrt{\gamma_Y(s,s)\gamma_Y(t,t)}}=\frac{\gamma_Y(s,t)}{\sqrt{2\sigma^2_w*2\sigma^2_w}}=\frac{\gamma_Y(s,t)}{2\sigma^2_w}
+$$
+$$
+\implies\boxed{\rho_Y(s,t)=\begin{cases} 1 & ;s=t \\ -\frac{1}{2} & ;|s-t|=1 \\ 0 & ;|s-t|\ge2 \end{cases}}
+$$
+\newpage
+
+### Question 4
+
+For a moving average process of the form 
+
+$$X_t = 0.1 W_{t-2} + 0.2 W_{t-1} +  W_{t}, $$
+
+determine mean function, autocovariance function, and autocorrelation function of $X_t$. 
+
+$$
+\mu_X(t)=\mathbb{E}(X_t)=\mathbb{E}(0.1W_{t-2}+0.2W_{t-1}+W_t)=0.1\mathbb{E}(W_{t-2})+0.2\mathbb{E}(W_{t-1})+\mathbb{E}(W_t)
+$$
+$$
+=0.1*0+0.2*0+0=0
+$$
+$$
+\implies \boxed{\mu_X(t)=0}
+$$
+$$
+\gamma_X(s,t)=Cov(X_s,X_t)=Cov(0.1W_{s-2}+0.2W_{s-1}+W_s,0.1W_{t-2}+0.2W_{t-1}+W_t)
+$$
+$$
+=0.01Cov(W_{s-2},W_{t-2})+0.02Cov(W_{s-2},W_{t-1})+0.1Cov(W_{s-2},W_t)
+$$
+$$
++0.02Cov(W_{s-1},W_{t-2})+0.04Cov(W_{s-1},W_{t-1})+0.2Cov(W_{s-1},W_t)
+$$
+$$
++0.1Cov(W_s,W_{t-2})+0.2Cov(W_s,W_{t-1})+Cov(W_s,W_t)
+$$
+
+1. $s=t \implies \gamma_Y(s,t)=0.01\sigma^2_w+0+0+0+0.04\sigma^2_w+0+0+0+\sigma^2_w=1.05\sigma^2_w$
+2. $s=t+1 \implies \gamma_Y(s,t)=0+0.02\sigma^2_w+0+0+0+0.2\sigma^2_w+0+0+0=0.22\sigma^2_w$
+3. $s=t-1 \implies \gamma_Y(s,t)=0+0+0+0.02\sigma^2_w+0+0+0+0.2\sigma^2_w+0=0.22\sigma^2_w$
+4. $s=t+2 \implies \gamma_Y(s,t)=0+0+0.1\sigma^2_w+0+0+0+0+0+0=0.1\sigma^2_w$
+5. $s=t-2 \implies \gamma_Y(s,t)=0+0+0+0+0+0+0.1\sigma^2_w+0+0=0.1\sigma^2_w$
+6. $s=t+3 \implies \gamma_Y(s,t)=0+0+0+0+0+0+0+0+0=0$
+7. $s=t-3 \implies \gamma_Y(s,t)=0+0+0+0+0+0+0+0+0=0$
+
+$$
+\implies \boxed{\gamma_X(s,t)=\begin{cases} 1.05\sigma^2_w & ;s=t \\ 0.22\sigma^2_w & ;|s-t|=1 \\ 0.1\sigma^2_w & ;|s-t|=2 \\ 0 & ;|s-t| \ge 3 \end{cases}}
+$$
+$$
+\rho_X(s,t)=\frac{\gamma_X(s,t)}{\sqrt{\gamma_X(s,s)\gamma_X(t,t)}}=\frac{\gamma_X(s,t)}{\sqrt{1.05\sigma^2_w*1.05\sigma^2_w}}=\frac{\gamma_x(s,t)}{1.05\sigma^2_w}
+$$
+$$
+\implies \boxed{\rho_X(s,t)=\begin{cases} 1 & ;s=t \\ 0.2095 & ;|s-t|=1 \\ 0.0952 & ;|s-t|=2 \\ 0 & ;|s-t| \ge 3 \end{cases}}
+$$
+\newpage
+
+### Question 5
+
+A time series with a periodic component can be constructed from 
+
+$$X_t = U_1 \sin (2\pi \omega_0 t) + U_2 \cos  (2\pi \omega_0 t) ,$$
+where $U_1$ and $U_2$ are independent random variables with zero means and variances $\sigma^2$. The constant $\omega_0$ determines the period or time it takes the process to make one complete cycle. Show the mean function, autocovariance function, and autocorrelation function of $X_t$. 
+
+Hint: $\omega_0$ and $t$ are both not random. 
+
+$$
+\mu_X(t)=\mathbb{E}(U_1sin(2\pi\omega_0t)+U_2cos(2\pi\omega_0t))=\mathbb{E}(U_1sin(2\pi\omega_0t))+\mathbb{E}(U_2cos(2\pi\omega_0t))
+$$
+$$
+=sin(2\pi\omega_0t)\mathbb{E}(U_1)+cos(2\pi\omega_0t)\mathbb{E}(U_2)=sin(2\pi\omega_0t)*0+cos(2\pi\omega_0t)*0
+$$
+$$
+\implies\boxed{\mu_X(t)=0}
+$$
+$$
+\gamma_X(s,t)=Cov(X_s,X_t)=Cov(U_1sin(2\pi\omega_0s)+U_2cos(2\pi\omega_0s),U_1sin(2\pi\omega_0t)+U_2cos(2\pi\omega_0t))
+$$
+$$
+=Cov(U_1sin(2\pi\omega_0s),U_1sin(2\pi\omega_0t))+Cov(U_1sin(2\pi\omega_0s),U_2cos(2\pi\omega_0t))
+$$
+$$
++Cov(U_2cos(2\pi\omega_0s),U_1sin(2\pi\omega_0t))+Cov(U_2cos(2\pi\omega_0s),U_2cos(2\pi\omega_0t))
+$$
+$$
+=Cov(U_1sin(2\pi\omega_0s),U_1sin(2\pi\omega_0t))+Cov(U_2cos(2\pi\omega_0s),U_2cos(2\pi\omega_0t))
+$$
+$$
+=sin(2\pi\omega_0s)sin(2\pi\omega_0t)Cov(U_1,U_1)+cos(2\pi\omega_0s)cos(2\pi\omega_0t)Cov(U_2,U_2)
+$$
+$$
+=sin(2\pi\omega_0s)sin(2\pi\omega_0t)Var(U_1)+cos(2\pi\omega_0s)cos(2\pi\omega_0t)Var(U_2)
+$$
+$$
+=[sin(2\pi\omega_0s)sin(2\pi\omega_0t)+cos(2\pi\omega_0s)cos(2\pi\omega_0t)]\sigma^2
+$$
+$$
+=\sigma^2cos(2\pi\omega_0(s-t))
+$$
+
+1. $s=t \implies \gamma_X(s,t)=\sigma^2$
+2. $s\neq t \implies \gamma_X(s,t)=\sigma^2cos(2\pi\omega_0(s-t))$
+
+$$
+\implies \boxed{\gamma_X(s,t)= \begin{cases} \sigma^2  & ;s=t \\ \sigma^2cos(2\pi\omega_0(s-t)) & ;s \neq t \end{cases}}
+$$
+$$
+\rho_X(s,t)=\frac{\gamma_X(s,t)}{\sqrt{\gamma_X(s,s)\gamma_X(t,t)}}=\frac{\gamma_X(s,t)}{\sqrt{\sigma^2*\sigma^2}}=\frac{\gamma_X(s,t)}{\sigma^2}
+$$
+$$
+\implies \boxed{\rho_X(s,t)= \begin{cases} 1 & ;s=t \\ cos(2\pi\omega_0(s-t)) & ;s \neq t \end{cases}}
+$$
+

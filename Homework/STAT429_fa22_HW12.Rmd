@@ -1,0 +1,69 @@
+---
+title: "HW 12"
+author: "Name: Paul Holaway  , NetID: paulch2"
+date: 'Due: 11/17/2022 11:59pm'
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk
+library(astsa)
+library(tidyverse)
+library(TSA)
+```
+
+
+### Question 1.
+
+
+Show that when $\phi>0$, the spectral density for an AR(1) process is a decreasing function of frequency, while for $\phi<0$ the spectral density increases.
+
+$$
+f(\omega)=\frac{\sigma^2_w}{|\phi(e^{-2\pi i\omega})|}\text{ ; }\theta(z)=1\text{ ; }\phi(z)=1-\phi z
+$$
+$$
+=\frac{\sigma^2_w}{(1-\phi e^{-2\pi i\omega})(1-\phi e^{2\pi i\omega})}=\frac{\sigma^2_w}{1-\phi e^{-2\pi i\omega}-\phi e^{2\pi i\omega}+\phi^2}=\frac{\sigma^2_w}{1+\phi^2-\phi(e^{-2\pi i\omega}+e^{2\pi i\omega})}
+$$
+$$
+=\frac{\sigma^2_w}{1+\phi^2-\phi[\cos(-2\pi\omega)+i\sin(-2\pi\omega)+\cos(2\pi\omega)+i\sin(2\pi\omega)]}=\frac{\sigma^2_w}{1+\phi^2-2\phi\cos(2\pi\omega)}
+$$
+$$
+\boxed{f(\omega)=\frac{\sigma^2_w}{1+\phi^2-2\phi\cos(2\pi\omega)}}
+$$
+$$
+f'(\omega)=\frac{-4\pi\phi\sigma^2_w(\sin(2\pi\omega))}{(1+\phi^2-2\phi\cos(2\pi\omega))^2}
+$$
+Note how the denominator cannot be negative, therefore we can simply focus on the sign of the numerator. We then focus on when $\omega\ge0$. When that happens, $\sin(2\pi\omega)>0$ and $\sigma^2_w>0$, so the sign of the derivative will depend on the value of $\phi$. If $\phi>0$, the derivative will be negative, indicating a decreasing function. If $\phi<0$, the derivative will be positive, indicating an increasing function. Therefor, we can conclude that if $\phi>0$, the spectral density for an AR(1) process is a decreasing function of frequency, and if $\phi<0$, the spectral density for an AR(1) process is an increasing function of frequency.
+
+\newpage
+
+### Question 2.
+
+Analyze the chicken price data `chicken` (from `astsa` package) using a spectral estimation procedure (periodogram). Aside from the obvious annual cycle, what other interesting cycles are revealed?
+
+```{r}
+tsplot(chicken)
+p2 = periodogram(chicken)
+freq2 = data.frame(p2$freq, p2$spec)
+freq2 = freq2 %>% rename(Frequency = "p2.freq") %>% rename(Spectrum = "p2.spec") %>%
+        arrange(desc(Spectrum)) %>% mutate(Cycle_Years = (1/Frequency)/12)
+head(freq2, 10)
+```
+When looking at the periodogram, we see spikes at $\omega\approx0.005,0.011,0.016,0.022$, which would equate to cycles of 15 years, 7 years 6 months, 5 years, and 3 years 9 months. However, our data is 16 years, so the first one probably does not have any meaningful interpretation. The second cycle is twice that of the fourth and half the first, so it would appear that we have found an unexpected cycle of 3.75 years. Given what we have found, I would say we can notice two interesting cycles from the periodogram. The first would be that we have a primary price cycle of 3 years 9 months and the second less pronounced price cycle of 5 years. 
+
+### Question 3. 
+
+The data `sunspotz` of the `astsa` package shows the biyearly smoothed number of sunspots from June 1749 to December 1978 with $n=459$ points that were taken twice per year. Perform a periodogram analysis to identify the predominant periods.
+
+```{r}
+tsplot(sunspotz)
+p3 = periodogram(sunspotz)
+freq3 = data.frame(p3$freq, p3$spec)
+freq3 = freq3 %>% rename(Frequency = "p3.freq") %>% rename(Spectrum = "p3.spec") %>%
+        arrange(desc(Spectrum)) %>% arrange(desc(Spectrum)) %>% 
+        mutate(Cycle_Years = (1/Frequency)/6)
+head(freq3, 10)
+```
+
+When looking at the periodogram, we can see two clusters of peaks with one of them being clearly more predominant than the other. The first comes from $\omega\approx0.0458,0.05$, and the second comes from $\omega\approx0.006,0.008$. From this, I would say the primary predominant period would be a cycle of about 3 to 4 years for a spike in the number of sun sports. It would also appear that there is a smaller spike in the number of sun spots every 20 to 27 years. As the 20 to 2 range is slightly less than 7 times the 3 to 4 range, this leads me to believe that there is a major spike in the number of sun spots every 3 to 4 years, but every 20 to 27 years, the spike is not quite as high of a spike as it normally would be.

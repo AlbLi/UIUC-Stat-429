@@ -1,0 +1,152 @@
+---
+title: "HW 09"
+author: "Name: Paul Holaway  , NetID: paulch2"
+date: 'Due: 10/27/2022 11:59pm'
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk
+library(xts)
+library(astsa)
+library(latex2exp)
+```
+
+### Question 1. 
+
+```{r, warning = FALSE}
+par(mfrow = c(2,1))
+#Original Data
+tsplot(gtemp_land, ylab = "Deviation in Celcius", main = "Global Mean Land Temperature")
+#Differenced Data
+tsplot(diff(gtemp_land), ylab = TeX(r"($\nabla$ Deviation in Celcius)"),
+       main = "Global Mean Land Temperature")
+```
+
+\newpage
+
+```{r}
+par(mfrow = c(1,2))
+acf(diff(gtemp_land), main = "")
+pacf(diff(gtemp_land), ylab = "PACF", main = "")
+```
+
+
+\newpage
+
+```{r}
+#Use p = 3, d = 1, q = 4
+sarima(gtemp_land, p = 3, d = 1, q = 4, no.constant = TRUE, details = FALSE)
+```
+
+\newpage
+
+```{r}
+#Forecasting
+sarima.for(gtemp_land, p = 3, d = 1, q = 4, n.ahead = 10, no.constant = TRUE)
+abline(v = 2018, lty = 4, col = "red")
+```
+
+\newpage
+
+**Final Model:** $\boxed{\text{ARIMA(3,1,4)}}$\
+\
+After looking at the original data, it is clear that the data must be differenced. After taking the first difference of the data, the trend in the original data has vanished. Work was done to see if there was a seasonal trend within the data, however after exploring periods between 2 and ten years, no visible improvement was seen in the plot or the model prediction. Therefore an ARIMA model was used as the final model for the data. After looking at the ACF and PACF, we can also see that there does not appear to be any kind of seasonal pattern, which would further support using just an ARIMA model. From the ACF, we can see a slight tailing off with a cutoff at lag 4 and lag 2 being insignificant. From the PACF, we can see a distinct cutoff at lag 3. Multiple ARIMA models were looked at (ARIMA(0,1,4), ARIMA(3,1,0), ARIMA(3,1,1), ARIMA(3,1,4)) and the model with the lowest AIC and BIC was the ARIMA(3,1,4) model. The AIC and BIC were lowest for the ARIMA(3,1,4) model and the remaining terms remained unchanged in terms of significance level, so an ARIMA(3,1,4) model was chosen for the final model. From the model predictions, we would expect the overall average land temperature to increase by as much as a 0.25 $^\circ C$ by 2027.
+
+---
+
+\newpage
+
+### Question 2. 
+
+```{r}
+par(mfrow = c(2,1))
+#Original Data
+tsplot(gtemp_ocean, ylab = "Deviation in Celcius", main = "Global Mean Ocean Temperature")
+#Differenced Data
+tsplot(diff(gtemp_ocean), ylab = TeX(r"($\nabla$ Deviation in Celcius)"), 
+       main = "Gloval Mean Ocean Temperature")
+```
+
+\newpage
+
+```{r}
+par(mfrow = c(1,2))
+acf(diff(gtemp_ocean), main = "")
+pacf(diff(gtemp_ocean), main = "")
+```
+
+\newpage
+
+```{r}
+#Use p = 2, d = 1, q = 2
+sarima(gtemp_ocean, p = 2, d = 1, q = 0, no.constant = TRUE, details = FALSE)
+```
+
+\newpage
+
+```{r}
+#Forecasting
+sarima.for(gtemp_ocean, p = 2, d = 1, q = 0, n.ahead = 10, no.constant = TRUE)
+abline(v = 2018, lty = 4, col = "red")
+```
+
+\newpage
+
+**Final Model:** $\boxed{\text{ARIMA(2,1,0)}}$\
+\
+After looking at the original data, it is clear that the data must be differenced. After taking the first difference of the data, the trend in the original data has vanished. Work was done to see if there was a seasonal trend within the data, however after exploring periods between 2 and ten years, no visible improvement was seen in the plot or the model prediction (just like in `gtemp_land`). Therefore an ARIMA model was used as the final model for the data. After looking at the ACF and PACF, we can also see that there does not appear to be any kind of seasonal pattern, which would further support using just an ARIMA model. From the ACF, we can see a distinct cutoff at lag 2 and lag 1 being insignificant. From the PACF, we can see a distinct cutoff at lag 2 with lag 1 also being insignificant. Multiple ARIMA models were looked at ($d=1$, $p={0,1,2}$, $q={0,1,2}$ combinations) and the model with the lowest AIC and BIC was the ARIMA(2,1,0) model. However, its predictions did not change much beyond two to three years in the future. While it does give us a prediction, the SE of those predictions is also quite high. I would expect the one to three year predictions to be the most accurate using this model while anything beyond that to not be as accurate. With the overall global ocean temperature change having so many factors influencing it, it would make sense that any model made would have great difficulty predicting anything beyond the immediate future.
+
+---
+
+\newpage
+
+### Question 3. 
+
+Consider the MA(1) series, $$X_t = W_t + \theta W_{t-1},$$
+where $W_t$ is white noise with variance $\sigma_w^2$. 
+
+(a) Derive the minimum mean square error one-step forecast based on the infinite past, and determine the mean-square error for this forecast. Hint: see (3.86) of [TSA4].
+
+$$
+X_t=(1+\theta B)W_t\implies W_t=(1+\theta B)^{-1}X_t
+$$
+$$
+\text{By Geometric Series }\implies W_t=\sum_{j=0}^\infty(-\theta)^jX_{t-j}
+$$
+$$
+X_{n+1}=W_{n+1}+\theta W_n=W_{n+1}+\theta\sum_{j=0}^\infty(-\theta)^jX_{t-j}
+$$
+$$
+\implies X^n_{n+1}=W^n_{n+1}+\theta\sum_{j=0}^\infty(-\theta)^jX^n_{t-j}
+$$
+$$
+\text{With }X^n_n=X_n\text{ and }W^n_{n+1}=0\implies \boxed{X^n_{n+1}=\theta\sum_{j=0}^\infty(-\theta)^jX_{t-j}}
+$$
+$$
+P^n_{n+1}=\mathbb{E}[(X_{n+1}-X^n_{n+1})^2]=\mathbb{E}[(W_{n+1}+\theta\sum_{j=0}^\infty(-\theta)^jX_{t-j}-\theta\sum_{j=0}^\infty(-\theta)^jX_{t-j})^2]=\mathbb{E}[(W_{n+1})^2]
+$$
+$$
+\sigma^2_w=\mathbb{E}[(W_{n+1})^2]-[\mathbb{E}(W_{n+1})]^2\text{ and }\mathbb{E}(W_{n+1}=0)\implies\sigma^2_w=\mathbb{E}[(W_{n+1})^2]
+$$
+$$
+\implies\boxed{P^n_{n+1}=\sigma^2_w}
+$$
+
+(b) Let $X_{n+1}^{n}$ be the truncated one-step-ahead forecast, as in (3.92) of [TSA4].
+
+Show that $$E[(X_{n+1}-X_{n+1}^{n})^2]=\sigma_w^2 (1+\theta^{2+2n}).$$
+
+$$
+\mathbb{E}[(X_{n+1}-X^n_{n+1})^2]=\mathbb{E}[(W_{n+1}+\theta\sum_{j=0}^n(-\theta)^jX_{t-j})^2]
+$$
+$$
+=\mathbb{E}[(W_{n+1}+\theta(1+\theta ^{n+1})W_n)^2]
+$$
+$$
+=\mathbb{E}[(W_{n+1})^2+2\theta(1+\theta^{n+1})W_nW_{n+1}+\theta^2(1+\theta^{n+1})^2W^2_n]
+$$
+$$
+=\sigma^2_w+\sigma^2_w\theta^{2n+2}=\boxed{\sigma^2_w(1+\theta^{2n+2})}
+$$
